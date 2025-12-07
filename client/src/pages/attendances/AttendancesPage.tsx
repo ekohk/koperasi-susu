@@ -1,9 +1,14 @@
-import { Add, Delete, Visibility, Edit } from '@mui/icons-material';
-import { Box, Button, Card, CardContent, Dialog, DialogActions, DialogContent, DialogTitle, Grid, MenuItem, Select, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography, Alert, Chip, Tabs, Tab, Paper, Divider, IconButton } from '@mui/material';
+import { Add, Delete, Visibility, Edit, Assignment, People, CheckCircle, Cancel, LocalHospital, WbSunny } from '@mui/icons-material';
+import { Box, Button, Card, CardContent, Dialog, DialogActions, DialogContent, DialogTitle, Grid, MenuItem, Select, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography, Alert, Chip, Tabs, Tab, Paper, Divider, IconButton, TableContainer, Switch, FormControlLabel } from '@mui/material';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
+import PageHeader from '../../components/PageHeader';
+import ModernTable, { ModernTableCell, ModernTableRow } from '../../components/ModernTable';
+import ModernButton, { ModernIconButton } from '../../components/ModernButton';
+import { showSuccess, showError, showWarning, showConfirm, showDeleteConfirm } from '../../utils/sweetalert';
+import Swal from 'sweetalert2';
 
 interface TabPanelProps {
 	children?: React.ReactNode;
@@ -33,11 +38,44 @@ function TabPanel(props: TabPanelProps) {
 
 export default function AttendancesPage() {
 	const [tabValue, setTabValue] = useState(0);
-	const [filters, setFilters] = useState({ start_date: '', end_date: '', status: '' });
+	const [filters, setFilters] = useState({ start_date: dayjs().startOf('month').format('YYYY-MM-DD'), end_date: dayjs().endOf('month').format('YYYY-MM-DD'), status: '' });
 	const { data, refetch } = useQuery({
 		queryKey: ['attendances', filters],
 		queryFn: async () => (await axios.get('/api/attendances', { params: filters })).data.data
 	});
+
+	// Generate all dates within current filters (month) and merge with data
+	const monthDates: string[] = (() => {
+		const dates: string[] = [];
+		const start = dayjs(filters.start_date);
+		const end = dayjs(filters.end_date);
+		let cursor = start.startOf('day');
+		while (cursor.isBefore(end) || cursor.isSame(end, 'day')) {
+			dates.push(cursor.format('YYYY-MM-DD'));
+			cursor = cursor.add(1, 'day');
+		}
+		return dates;
+	})();
+
+	// Newest first
+	const monthDatesDesc = [...monthDates].reverse();
+
+	const [showFullMonth, setShowFullMonth] = useState(true);
+
+	const fullMonthRows = monthDatesDesc.flatMap((date) => {
+		const rowsForDate = (data ?? []).filter((r: any) => dayjs(r.date).isSame(dayjs(date), 'day'));
+		if (rowsForDate.length > 0) return rowsForDate;
+		return [{
+			id: `placeholder-${date}`,
+			date,
+			employee_name: '-',
+			employee_position: '-',
+			status: '-',
+			notes: ''
+		}];
+	});
+
+	const displayRows = showFullMonth ? fullMonthRows : (data ?? []).sort((a: any, b: any) => dayjs(b.date).valueOf() - dayjs(a.date).valueOf());
 
 	const [selectedMonth, setSelectedMonth] = useState(dayjs().month() + 1);
 	const [selectedYear, setSelectedYear] = useState(dayjs().year());
@@ -113,13 +151,13 @@ export default function AttendancesPage() {
 	const save = async () => {
 		try {
 			await axios.post('/api/attendances', { ...form, employee_id: Number(form.employee_id) });
-			alert('Berhasil menambahkan absensi!');
+			showSuccess('Data absensi berhasil ditambahkan', 'Berhasil!');
 			setOpen(false);
 			queryClient.invalidateQueries({ queryKey: ['attendances', filters] });
 			queryClient.invalidateQueries({ queryKey: ['attendance-stats'] });
 		} catch (err: any) {
 			console.error('Save error:', err);
-			alert('Gagal menyimpan: ' + (err?.response?.data?.message || err?.message || 'Unknown error'));
+			showError('Gagal menyimpan data absensi: ' + (err?.response?.data?.message || err?.message || 'Terjadi kesalahan'), 'Gagal Menyimpan');
 		}
 	};
 
@@ -136,8 +174,30 @@ export default function AttendancesPage() {
 
 	const deleteByMonth = async () => {
 		if (!selectedMonthData) return;
-		
-		if (!confirm(`Anda yakin ingin menghapus ${selectedMonthData.record_count} data absensi untuk bulan ${deleteForm.month}/${deleteForm.year}?\n\nTotal: ${selectedMonthData.record_count} record\nHadir: ${selectedMonthData.present_count} record\nIjin: ${selectedMonthData.absent_count} record\nLibur: ${selectedMonthData.holiday_count} record\nSakit: ${selectedMonthData.sick_count} record\n\nTindakan ini tidak dapat dibatalkan!`)) {
+
+		const result = await Swal.fire({
+			icon: 'warning',
+			title: 'Konfirmasi Hapus Bulanan',
+			html: `
+				<p>Apakah Anda yakin ingin menghapus <strong>${selectedMonthData.record_count}</strong> data absensi untuk bulan <strong>${deleteForm.month}/${deleteForm.year}</strong>?</p>
+				<div style="text-align: left; margin-top: 1rem; padding: 1rem; background: #f3f4f6; border-radius: 0.5rem;">
+					<p style="margin: 0.5rem 0;"><strong>Total:</strong> ${selectedMonthData.record_count} record</p>
+					<p style="margin: 0.5rem 0;"><strong>Hadir:</strong> ${selectedMonthData.present_count} record</p>
+					<p style="margin: 0.5rem 0;"><strong>Ijin:</strong> ${selectedMonthData.absent_count} record</p>
+					<p style="margin: 0.5rem 0;"><strong>Libur:</strong> ${selectedMonthData.holiday_count} record</p>
+					<p style="margin: 0.5rem 0;"><strong>Sakit:</strong> ${selectedMonthData.sick_count} record</p>
+				</div>
+				<p style="color: #ef4444; margin-top: 1rem; font-weight: 500;">Tindakan ini tidak dapat dibatalkan!</p>
+			`,
+			showCancelButton: true,
+			confirmButtonText: 'Ya, Hapus!',
+			cancelButtonText: 'Batal',
+			confirmButtonColor: '#ef4444',
+			cancelButtonColor: '#6b7280',
+			reverseButtons: true,
+		});
+
+		if (!result.isConfirmed) {
 			return;
 		}
 
@@ -154,9 +214,9 @@ export default function AttendancesPage() {
 			const res = await axios.get('/api/attendances/stats/available-months');
 			setAvailableMonths(res.data.data);
 			
-			alert('Data berhasil dihapus!');
+			showSuccess('Data absensi bulanan berhasil dihapus', 'Berhasil!');
 		} catch (error: any) {
-			alert('Error: ' + (error.response?.data?.message || error.message || 'Gagal menghapus data'));
+			showError('Gagal menghapus data absensi: ' + (error.response?.data?.message || error.message || 'Terjadi kesalahan'), 'Gagal Menghapus');
 		}
 	};
 
@@ -179,7 +239,7 @@ export default function AttendancesPage() {
 				status: editForm.status,
 				notes: editForm.notes
 			});
-			alert('Berhasil mengupdate absensi!');
+			showSuccess('Data absensi berhasil diperbarui', 'Berhasil!');
 			setEditOpen(false);
 			queryClient.invalidateQueries({ queryKey: ['attendances', filters] });
 			queryClient.invalidateQueries({ queryKey: ['attendance-stats'] });
@@ -190,19 +250,20 @@ export default function AttendancesPage() {
 			} else {
 				errorMsg += err?.response?.data?.message || err?.message || 'Unknown error';
 			}
-			alert(errorMsg);
+			showError(errorMsg, 'Gagal Memperbarui');
 		}
 	};
 
 	const removeAttendance = async (id: number) => {
-		if (!window.confirm('Hapus data absensi ini?')) return;
+		const confirmed = await showDeleteConfirm('data absensi ini');
+		if (!confirmed) return;
 		try {
 			await axios.delete(`/api/attendances/${id}`);
-			alert('Berhasil menghapus absensi!');
+			showSuccess('Data absensi berhasil dihapus', 'Berhasil!');
 			queryClient.invalidateQueries({ queryKey: ['attendances', filters] });
 			queryClient.invalidateQueries({ queryKey: ['attendance-stats'] });
 		} catch (err: any) {
-			alert('Gagal menghapus: ' + (err?.response?.data?.message || err?.message || 'Unknown error'));
+			showError('Gagal menghapus data absensi: ' + (err?.response?.data?.message || err?.message || 'Terjadi kesalahan'), 'Gagal Menghapus');
 		}
 	};
 
@@ -214,41 +275,93 @@ export default function AttendancesPage() {
 		}).format(amount);
 	};
 
+	// Tampilkan semua baris tanpa pagination atau tombol tambahan
 
 
 	return (
-		<Box sx={{ height: 'calc(100vh - 120px)', display: 'flex', flexDirection: 'column' }}>
-			<Grid container spacing={3} sx={{ flexShrink: 0 }}>
-				<Grid item xs={12}>
-					<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-						<Typography variant="h5" fontWeight={700}>Absensi & Gaji Karyawan</Typography>
-						<Box sx={{ display: 'flex', gap: 1 }}>
-							<Button variant="contained" startIcon={<Add />} onClick={openCreate}>Tambah</Button>
-							<Button variant="outlined" color="error" startIcon={<Delete />} onClick={openDeleteDialog}>Hapus Per Bulan</Button>
-						</Box>
-					</Box>
-				</Grid>
+		<Box sx={{ p: { xs: 2, md: 3 }, bgcolor: '#f8fafc', minHeight: '100vh' }}>
+			<PageHeader
+				title="Absensi & Gaji Karyawan"
+				description="Manajemen kehadiran dan penggajian karyawan"
+				actions={
+					<>
+						<ModernButton startIcon={<Add />} onClick={openCreate}>
+							Tambah
+						</ModernButton>
+						<ModernButton
+							variant="outlined"
+							color="error"
+							startIcon={<Delete />}
+							onClick={openDeleteDialog}
+						>
+							Hapus Per Bulan
+						</ModernButton>
+					</>
+				}
+			/>
 
-				<Grid item xs={12}>
-					<Paper sx={{ width: '100%' }}>
-						<Tabs value={tabValue} onChange={(e, newValue) => setTabValue(newValue)}>
-							<Tab label="Absensi" />
-							<Tab label="Gaji" />
-						</Tabs>
-					</Paper>
-				</Grid>
-			</Grid>
+			{/* Modern Tabs */}
+			<Box sx={{ mb: 3 }}>
+				<Paper elevation={0} sx={{
+					borderRadius: 3,
+					border: '1px solid #e5e7eb',
+					bgcolor: '#ffffff',
+					overflow: 'hidden'
+				}}>
+					<Tabs
+						value={tabValue}
+						onChange={(e, newValue) => setTabValue(newValue)}
+						sx={{
+							'& .MuiTabs-flexContainer': {
+								bgcolor: '#f8fafc'
+							},
+							'& .MuiTab-root': {
+								color: '#6b7280',
+								fontWeight: 600,
+								textTransform: 'none',
+								fontSize: '0.875rem',
+								'&.Mui-selected': {
+									color: '#22c55e'
+								}
+							},
+							'& .MuiTabs-indicator': {
+								bgcolor: '#22c55e',
+								height: 3,
+								borderRadius: '3px 3px 0 0'
+							}
+						}}
+					>
+						<Tab label="Absensi" />
+						<Tab label="Gaji" />
+					</Tabs>
+				</Paper>
+			</Box>
 
-			<Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
+			<Box>
 				<TabPanel value={tabValue} index={0}>
-					<Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+					<Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
 						{/* Statistik Absensi */}
 						{attendanceStats && (
-							<Card sx={{ mb: 2, flexShrink: 0 }}>
-								<CardContent>
-									<Typography variant="h6" gutterBottom>
+							<Card elevation={0} sx={{
+								mb: 3,
+								flexShrink: 0,
+								borderRadius: 3,
+								border: '1px solid #e5e7eb',
+								bgcolor: '#ffffff',
+								overflow: 'hidden'
+							}}>
+								<Box sx={{ bgcolor: '#f8fafc', p: 3, borderBottom: '1px solid #e5e7eb' }}>
+									<Typography variant="h6" sx={{
+										display: 'flex',
+										alignItems: 'center',
+										fontWeight: 600,
+										color: '#1f2937'
+									}}>
+										<Assignment sx={{ mr: 1.5, fontSize: 20, color: '#22c55e' }} />
 										Statistik Absensi - {new Date(selectedYear, selectedMonth - 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
 									</Typography>
+								</Box>
+								<CardContent sx={{ p: 3 }}>
 									<Grid container spacing={3}>
 										<Grid item xs={12} sm={6} md={3}>
 											<Box textAlign="center">
@@ -347,70 +460,65 @@ export default function AttendancesPage() {
 						)}
 						
 						{/* Tabel Absensi */}
-						<Card sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-							<CardContent sx={{ p: 0, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-								<Box sx={{ 
-									width: '100%', 
-									overflow: 'auto',
-									flexGrow: 1,
-									'&::-webkit-scrollbar': {
-										width: '8px',
-										height: '8px',
-									},
-									'&::-webkit-scrollbar-track': {
-										background: '#f1f1f1',
-										borderRadius: '4px',
-									},
-									'&::-webkit-scrollbar-thumb': {
-										background: '#c1c1c1',
-										borderRadius: '4px',
-										'&:hover': {
-											background: '#a8a8a8',
-										},
-									},
-								}}>
-									<Table size="small">
+						<Card sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+							<CardContent sx={{ p: 0, flexGrow: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+								<Box sx={{ p: 2, pb: 0 }}>
+									<FormControlLabel
+										control={<Switch size="small" checked={showFullMonth} onChange={(e) => setShowFullMonth(e.target.checked)} />}
+										label={showFullMonth ? 'Tampilkan 1 bulan (dengan tanggal kosong)' : 'Hanya tampilkan data absensi'}
+									/>
+								</Box>
+								<TableContainer>
+									<ModernTable>
 										<TableHead sx={{ position: 'sticky', top: 0, zIndex: 1, backgroundColor: 'white' }}>
 											<TableRow>
-												<TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', minWidth: 120 }}>Tanggal</TableCell>
-												<TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', minWidth: 150 }}>Nama</TableCell>
-												<TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', minWidth: 120 }}>Posisi</TableCell>
-												<TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', minWidth: 100 }}>Status</TableCell>
-												<TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', minWidth: 200 }}>Catatan</TableCell>
-												<TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', minWidth: 100 }} align="center">Aksi</TableCell>
+												<ModernTableCell sx={{ minWidth: 120 }}>Tanggal</ModernTableCell>
+												<ModernTableCell sx={{ minWidth: 150 }}>Nama</ModernTableCell>
+												<ModernTableCell sx={{ minWidth: 120 }}>Posisi</ModernTableCell>
+												<ModernTableCell sx={{ minWidth: 100 }}>Status</ModernTableCell>
+												<ModernTableCell sx={{ minWidth: 200 }}>Catatan</ModernTableCell>
+												<ModernTableCell sx={{ minWidth: 100 }} align="center">Aksi</ModernTableCell>
 											</TableRow>
 										</TableHead>
 										<TableBody>
-											{(data ?? []).map((row: any) => (
-												<TableRow key={row.id} hover>
-													<TableCell>{dayjs(row.date).format('DD/MM/YYYY')}</TableCell>
-													<TableCell>{row.employee_name}</TableCell>
-													<TableCell>{row.employee_position}</TableCell>
-													<TableCell>
-														<Chip 
-															label={row.status} 
-															color={
-																row.status === 'hadir' ? 'success' :
-																row.status === 'sakit' ? 'warning' :
-																row.status === 'ijin' ? 'error' : 'default'
-															}
-															size="small"
-														/>
-													</TableCell>
-													<TableCell>{row.notes}</TableCell>
-													<TableCell align="center">
-														<IconButton size="small" color="primary" onClick={() => openEdit(row)} sx={{ mr: 1 }}>
-															<Edit />
-														</IconButton>
-														<IconButton size="small" color="error" onClick={() => removeAttendance(row.id)}>
-															<Delete />
-														</IconButton>
-													</TableCell>
-												</TableRow>
+											{displayRows.map((row: any) => (
+												<ModernTableRow key={row.id}>
+													<ModernTableCell variant="date">{dayjs(row.date).format('DD/MM/YYYY')}</ModernTableCell>
+													<ModernTableCell variant="name">{row.employee_name === '-' ? <Box sx={{ color: '#9ca3af', fontSize: '0.875rem' }}>-</Box> : row.employee_name}</ModernTableCell>
+													<ModernTableCell>{row.employee_position === '-' ? <Box sx={{ color: '#9ca3af', fontSize: '0.875rem' }}>-</Box> : row.employee_position}</ModernTableCell>
+													<ModernTableCell>
+														{row.status && row.status !== '-' ? (
+															<Chip
+																label={row.status}
+																color={
+																	row.status === 'hadir' ? 'success' :
+																	row.status === 'sakit' ? 'warning' :
+																	row.status === 'ijin' ? 'error' : 'default'
+																}
+																size="small"
+															/>
+														) : (
+															<Box sx={{ color: '#9ca3af', fontSize: '0.875rem' }}>-</Box>
+														)}
+													</ModernTableCell>
+													<ModernTableCell variant="description">{row.notes || <Box sx={{ color: '#9ca3af', fontSize: '0.875rem' }}>-</Box>}</ModernTableCell>
+													<ModernTableCell align="center">
+														{String(row.id).startsWith('placeholder-') ? null : (
+															<>
+																<ModernIconButton color="primary" onClick={() => openEdit(row)}>
+																	<Edit />
+																</ModernIconButton>
+																<ModernIconButton color="error" onClick={() => removeAttendance(row.id)}>
+																	<Delete />
+																</ModernIconButton>
+															</>
+														)}
+													</ModernTableCell>
+												</ModernTableRow>
 											))}
 										</TableBody>
-									</Table>
-								</Box>
+									</ModernTable>
+								</TableContainer>
 							</CardContent>
 						</Card>
 					</Box>
@@ -456,10 +564,9 @@ export default function AttendancesPage() {
 										Error loading salaries: {salariesError?.message}
 									</Alert>
 								) : salaries && salaries.length > 0 ? (
-									<Box sx={{ 
-										width: '100%', 
-										overflow: 'auto',
-										flexGrow: 1,
+									<TableContainer sx={{
+										overflowX: 'auto',
+										maxHeight: '70vh',
 										'&::-webkit-scrollbar': {
 											width: '8px',
 											height: '8px',
@@ -476,80 +583,80 @@ export default function AttendancesPage() {
 											},
 										},
 									}}>
-										<Table size="small" sx={{ minWidth: 1200 }}>
-											<TableHead sx={{ position: 'sticky', top: 0, zIndex: 1, backgroundColor: 'white' }}>
+										<Table sx={{ minWidth: 1400 }} stickyHeader>
+											<TableHead>
 												<TableRow>
-													<TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', minWidth: 80 }}>Periode</TableCell>
-													<TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', minWidth: 150 }}>Nama Karyawan</TableCell>
-													<TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', minWidth: 120 }}>Posisi</TableCell>
-													<TableCell align="right" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', minWidth: 120 }}>Gaji Pokok</TableCell>
-													<TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', minWidth: 80 }}>Hadir</TableCell>
-													<TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', minWidth: 80 }}>Ijin</TableCell>
-													<TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', minWidth: 80 }}>Sakit</TableCell>
-													<TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', minWidth: 80 }}>Libur</TableCell>
-													<TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', minWidth: 100 }}>Total Kerja</TableCell>
-													<TableCell align="right" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', minWidth: 120 }}>Gaji/Hari</TableCell>
-													<TableCell align="right" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', minWidth: 120 }}>Total Gaji</TableCell>
-													<TableCell align="right" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', minWidth: 120 }}>Potongan</TableCell>
-													<TableCell align="right" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', minWidth: 120 }}>Bonus</TableCell>
-													<TableCell align="right" sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', color: '#1976d2', minWidth: 120 }}>Gaji Akhir</TableCell>
+													<TableCell align="center" sx={{ minWidth: 80, fontWeight: 600, bgcolor: '#f9fafb' }}>Periode</TableCell>
+													<TableCell sx={{ minWidth: 150, fontWeight: 600, bgcolor: '#f9fafb' }}>Nama Karyawan</TableCell>
+													<TableCell sx={{ minWidth: 120, fontWeight: 600, bgcolor: '#f9fafb' }}>Posisi</TableCell>
+													<TableCell align="right" sx={{ minWidth: 120, fontWeight: 600, bgcolor: '#f9fafb' }}>Gaji Pokok</TableCell>
+													<TableCell align="center" sx={{ minWidth: 80, fontWeight: 600, bgcolor: '#f9fafb' }}>Hadir</TableCell>
+													<TableCell align="center" sx={{ minWidth: 80, fontWeight: 600, bgcolor: '#f9fafb' }}>Ijin</TableCell>
+													<TableCell align="center" sx={{ minWidth: 80, fontWeight: 600, bgcolor: '#f9fafb' }}>Sakit</TableCell>
+													<TableCell align="center" sx={{ minWidth: 80, fontWeight: 600, bgcolor: '#f9fafb' }}>Libur</TableCell>
+													<TableCell align="center" sx={{ minWidth: 100, fontWeight: 600, bgcolor: '#f9fafb' }}>Total Kerja</TableCell>
+													<TableCell align="right" sx={{ minWidth: 120, fontWeight: 600, bgcolor: '#f9fafb' }}>Gaji/Hari</TableCell>
+													<TableCell align="right" sx={{ minWidth: 120, fontWeight: 600, bgcolor: '#f9fafb' }}>Total Gaji</TableCell>
+													<TableCell align="right" sx={{ minWidth: 120, fontWeight: 600, bgcolor: '#f9fafb' }}>Potongan</TableCell>
+													<TableCell align="right" sx={{ minWidth: 120, fontWeight: 600, bgcolor: '#f9fafb' }}>Bonus</TableCell>
+													<TableCell align="right" sx={{ minWidth: 120, fontWeight: 600, bgcolor: '#f9fafb' }}>Gaji Akhir</TableCell>
 												</TableRow>
 											</TableHead>
 											<TableBody>
 												{salaries.map((row: any, index: number) => (
 													<TableRow key={row.id} hover sx={{ backgroundColor: index % 2 === 0 ? '#fafafa' : 'white' }}>
-														<TableCell align="center" sx={{ fontWeight: 'medium' }}>{row.month}/{row.year}</TableCell>
-														<TableCell sx={{ fontWeight: 'medium' }}>{row.employee_name}</TableCell>
-														<TableCell>{row.employee_position}</TableCell>
-														<TableCell align="right">{formatCurrency(row.base_salary)}</TableCell>
-														<TableCell align="center">
-															<Chip 
-																label={row.present_days} 
-																color="success" 
-																size="small" 
+														<TableCell align="center" sx={{ fontWeight: 'medium', minWidth: 80 }}>{row.month}/{row.year}</TableCell>
+														<TableCell sx={{ fontWeight: 'medium', minWidth: 150 }}>{row.employee_name}</TableCell>
+														<TableCell sx={{ minWidth: 120 }}>{row.employee_position}</TableCell>
+														<TableCell align="right" sx={{ minWidth: 120, fontWeight: 600, color: '#22c55e' }}>{formatCurrency(row.base_salary)}</TableCell>
+														<TableCell align="center" sx={{ minWidth: 80 }}>
+															<Chip
+																label={row.present_days}
+																color="success"
+																size="small"
 																variant="outlined"
 															/>
 														</TableCell>
-														<TableCell align="center">
-															<Chip 
-																label={row.absent_days} 
-																color="error" 
-																size="small" 
+														<TableCell align="center" sx={{ minWidth: 80 }}>
+															<Chip
+																label={row.absent_days}
+																color="error"
+																size="small"
 																variant="outlined"
 															/>
 														</TableCell>
-														<TableCell align="center">
-															<Chip 
-																label={row.sick_days} 
-																color="warning" 
-																size="small" 
+														<TableCell align="center" sx={{ minWidth: 80 }}>
+															<Chip
+																label={row.sick_days}
+																color="warning"
+																size="small"
 																variant="outlined"
 															/>
 														</TableCell>
-														<TableCell align="center">
-															<Chip 
-																label={row.holiday_days} 
-																color="info" 
-																size="small" 
+														<TableCell align="center" sx={{ minWidth: 80 }}>
+															<Chip
+																label={row.holiday_days}
+																color="info"
+																size="small"
 																variant="outlined"
 															/>
 														</TableCell>
-														<TableCell align="center">
-															<Chip 
-																label={row.total_working_days} 
-																color="primary" 
+														<TableCell align="center" sx={{ minWidth: 100 }}>
+															<Chip
+																label={row.total_working_days}
+																color="primary"
 																size="small"
 															/>
 														</TableCell>
-														<TableCell align="right">{formatCurrency(row.salary_per_day)}</TableCell>
-														<TableCell align="right">{formatCurrency(row.total_salary)}</TableCell>
-														<TableCell align="right" sx={{ color: row.deductions > 0 ? '#d32f2f' : 'inherit' }}>
+														<TableCell align="right" sx={{ minWidth: 120, fontWeight: 600, color: '#22c55e' }}>{formatCurrency(row.salary_per_day)}</TableCell>
+														<TableCell align="right" sx={{ minWidth: 120, fontWeight: 600, color: '#22c55e' }}>{formatCurrency(row.total_salary)}</TableCell>
+														<TableCell align="right" sx={{ color: row.deductions > 0 ? '#d32f2f' : 'inherit', minWidth: 120 }}>
 															{formatCurrency(row.deductions)}
 														</TableCell>
-														<TableCell align="right" sx={{ color: row.bonuses > 0 ? '#2e7d32' : 'inherit' }}>
+														<TableCell align="right" sx={{ color: row.bonuses > 0 ? '#2e7d32' : 'inherit', minWidth: 120 }}>
 															{formatCurrency(row.bonuses)}
 														</TableCell>
-														<TableCell align="right">
+														<TableCell align="right" sx={{ minWidth: 120 }}>
 															<Typography variant="body2" fontWeight="bold" color="primary">
 																{formatCurrency(row.final_salary)}
 															</Typography>
@@ -558,7 +665,7 @@ export default function AttendancesPage() {
 												))}
 											</TableBody>
 										</Table>
-									</Box>
+									</TableContainer>
 								) : (
 									<Box sx={{ textAlign: 'center', py: 4 }}>
 										<Typography color="text.secondary">
@@ -592,8 +699,8 @@ export default function AttendancesPage() {
 					<TextField label="Catatan" fullWidth margin="normal" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
 				</DialogContent>
 				<DialogActions>
-					<Button onClick={() => setOpen(false)}>Batal</Button>
-					<Button variant="contained" onClick={save}>Simpan</Button>
+					<ModernButton variant="outlined" onClick={() => setOpen(false)}>Batal</ModernButton>
+					<ModernButton onClick={save}>Simpan</ModernButton>
 				</DialogActions>
 			</Dialog>
 
@@ -707,15 +814,14 @@ export default function AttendancesPage() {
 					</Box>
 				</DialogContent>
 				<DialogActions>
-					<Button onClick={() => setDeleteDialogOpen(false)}>Batal</Button>
-					<Button 
-						variant="contained" 
-						color="error" 
+					<ModernButton variant="outlined" onClick={() => setDeleteDialogOpen(false)}>Batal</ModernButton>
+					<ModernButton
+						color="error"
 						onClick={deleteByMonth}
 						disabled={!selectedMonthData}
 					>
 						Hapus Data
-					</Button>
+					</ModernButton>
 				</DialogActions>
 			</Dialog>
 
@@ -737,8 +843,8 @@ export default function AttendancesPage() {
 					<TextField label="Catatan" fullWidth margin="normal" value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} />
 				</DialogContent>
 				<DialogActions>
-					<Button onClick={() => setEditOpen(false)}>Batal</Button>
-					<Button variant="contained" onClick={saveEdit}>Simpan</Button>
+					<ModernButton variant="outlined" onClick={() => setEditOpen(false)}>Batal</ModernButton>
+					<ModernButton onClick={saveEdit}>Simpan</ModernButton>
 				</DialogActions>
 			</Dialog>
 

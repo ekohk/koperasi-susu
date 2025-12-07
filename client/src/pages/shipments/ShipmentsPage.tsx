@@ -4,6 +4,10 @@ import { Box, Button, Card, CardContent, Dialog, DialogActions, DialogContent, D
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import dayjs from 'dayjs';
+import PageHeader from '../../components/PageHeader';
+import ModernTable, { ModernTableCell, ModernTableRow } from '../../components/ModernTable';
+import ModernButton, { ModernIconButton } from '../../components/ModernButton';
+import { showSuccess, showError, showDeleteConfirm } from '../../utils/sweetalert';
 
 export default function ShipmentsPage() {
   const queryClient = useQueryClient();
@@ -25,7 +29,7 @@ export default function ShipmentsPage() {
     setForm({
       id: row.id,
       date: row.date ? dayjs(row.date).format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD'),
-      amount: row.amount?.toString() || '',
+      amount: row.amount ? parseFloat(row.amount).toString() : '',
       destination: row.destination || '',
       notes: row.notes || ''
     });
@@ -41,9 +45,9 @@ export default function ShipmentsPage() {
       setOpen(false);
       setForm({ id: '', date: dayjs().format('YYYY-MM-DD'), amount: '', destination: '', notes: '' });
       queryClient.invalidateQueries({ queryKey: ['shipments'] });
-      alert('Pengiriman berhasil ditambahkan!');
+      showSuccess('Data pengiriman berhasil ditambahkan', 'Berhasil!');
     } catch (err: any) {
-      alert('Gagal menyimpan: ' + (err?.response?.data?.message || err?.message || 'Unknown error'));
+      showError('Gagal menyimpan data pengiriman: ' + (err?.response?.data?.message || err?.message || 'Terjadi kesalahan'), 'Gagal Menyimpan');
     }
   };
 
@@ -58,7 +62,7 @@ export default function ShipmentsPage() {
       setEditOpen(false);
       setForm({ id: '', date: dayjs().format('YYYY-MM-DD'), amount: '', destination: '', notes: '' });
       queryClient.invalidateQueries({ queryKey: ['shipments'] });
-      alert('Pengiriman berhasil diupdate!');
+      showSuccess('Data pengiriman berhasil diperbarui', 'Berhasil!');
     } catch (err: any) {
       let errorMsg = 'Gagal mengupdate: ';
       if (err?.response?.data?.errors) {
@@ -66,67 +70,66 @@ export default function ShipmentsPage() {
       } else {
         errorMsg += err?.response?.data?.message || err?.message || 'Unknown error';
       }
-      alert(errorMsg);
+      showError(errorMsg, 'Gagal Memperbarui');
     }
   };
 
   const deleteShipment = async (id: number) => {
-    if (!confirm('Anda yakin ingin menghapus data pengiriman ini?')) {
+    const confirmed = await showDeleteConfirm('pengiriman ini');
+    if (!confirmed) {
       return;
     }
 
     try {
       await axios.delete(`/api/shipments/${id}`);
-      alert('Berhasil menghapus pengiriman!');
+      showSuccess('Data pengiriman berhasil dihapus', 'Berhasil!');
       queryClient.invalidateQueries({ queryKey: ['shipments'] });
     } catch (err: any) {
-      alert('Gagal menghapus: ' + (err?.response?.data?.message || err?.message || 'Unknown error'));
+      showError('Gagal menghapus data pengiriman: ' + (err?.response?.data?.message || err?.message || 'Terjadi kesalahan'), 'Gagal Menghapus');
     }
   };
 
   return (
-    <Grid container spacing={3}>
-      <Grid item xs={12}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
-          <Typography variant="h5" fontWeight={700}>Pengiriman Susu</Typography>
-          <Button variant="contained" startIcon={<Add />} onClick={openCreate}>Tambah</Button>
-        </Box>
-      </Grid>
-      <Grid item xs={12}>
-        <Card>
-          <CardContent>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Tanggal</TableCell>
-                  <TableCell align="right">Jumlah (L)</TableCell>
-                  <TableCell>Tujuan</TableCell>
-                  <TableCell>Catatan</TableCell>
-                  <TableCell align="center">Aksi</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {(data ?? []).map((row: any) => (
-                  <TableRow key={row.id} hover>
-                    <TableCell>{dayjs(row.date).format('DD/MM/YYYY')}</TableCell>
-                    <TableCell align="right">{row.amount}</TableCell>
-                    <TableCell>{row.destination}</TableCell>
-                    <TableCell>{row.notes}</TableCell>
-                    <TableCell align="center">
-                      <IconButton size="small" onClick={() => openEdit(row)} color="primary">
-                        <Edit />
-                      </IconButton>
-                      <IconButton size="small" onClick={() => deleteShipment(row.id)} color="error">
-                        <Delete />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </Grid>
+    <Box sx={{ p: { xs: 2, md: 3 }, bgcolor: '#f8fafc', minHeight: '100vh' }}>
+      <PageHeader
+        title="Pengiriman Susu"
+        description="Kelola data pengiriman susu harian"
+        actions={
+          <ModernButton startIcon={<Add />} onClick={openCreate}>
+            Tambah
+          </ModernButton>
+        }
+      />
+
+      <ModernTable>
+        <TableHead>
+          <TableRow>
+            <ModernTableCell>Tanggal</ModernTableCell>
+            <ModernTableCell align="right">Jumlah (L)</ModernTableCell>
+            <ModernTableCell>Tujuan</ModernTableCell>
+            <ModernTableCell>Catatan</ModernTableCell>
+            <ModernTableCell align="center">Aksi</ModernTableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {(data ?? []).map((row: any) => (
+            <ModernTableRow key={row.id}>
+              <ModernTableCell variant="date">{dayjs(row.date).format('DD/MM/YYYY')}</ModernTableCell>
+              <ModernTableCell align="right">{row.amount} L</ModernTableCell>
+              <ModernTableCell variant="name">{row.destination}</ModernTableCell>
+              <ModernTableCell variant="description">{row.notes || <Box sx={{ color: '#9ca3af', fontSize: '0.875rem' }}>-</Box>}</ModernTableCell>
+              <ModernTableCell align="center">
+                <ModernIconButton color="primary" onClick={() => openEdit(row)}>
+                  <Edit />
+                </ModernIconButton>
+                <ModernIconButton color="error" onClick={() => deleteShipment(row.id)}>
+                  <Delete />
+                </ModernIconButton>
+              </ModernTableCell>
+            </ModernTableRow>
+          ))}
+        </TableBody>
+      </ModernTable>
 
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Tambah Pengiriman Susu</DialogTitle>
@@ -166,9 +169,8 @@ export default function ShipmentsPage() {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpen(false)}>Batal</Button>
-          <Button
-            variant="contained"
+          <ModernButton variant="outlined" onClick={() => setOpen(false)}>Batal</ModernButton>
+          <ModernButton
             onClick={save}
             disabled={
               !form.date ||
@@ -178,7 +180,7 @@ export default function ShipmentsPage() {
             }
           >
             Simpan
-          </Button>
+          </ModernButton>
         </DialogActions>
       </Dialog>
 
@@ -217,9 +219,8 @@ export default function ShipmentsPage() {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEditOpen(false)}>Batal</Button>
-          <Button
-            variant="contained"
+          <ModernButton variant="outlined" onClick={() => setEditOpen(false)}>Batal</ModernButton>
+          <ModernButton
             onClick={saveEdit}
             disabled={
               !form.date ||
@@ -229,10 +230,10 @@ export default function ShipmentsPage() {
             }
           >
             Simpan
-          </Button>
+          </ModernButton>
         </DialogActions>
       </Dialog>
-    </Grid>
+    </Box>
   );
 }
 

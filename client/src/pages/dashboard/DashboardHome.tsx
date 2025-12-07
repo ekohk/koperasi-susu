@@ -10,7 +10,9 @@ import {
     TableCell,
     TableHead,
     TableRow,
-    Chip
+    Chip,
+    Paper,
+    IconButton
 } from '@mui/material';
 import {
     TrendingUp,
@@ -23,7 +25,11 @@ import {
     CheckCircle,
     Cancel,
     LocalHospital,
-    WbSunny
+    WbSunny,
+    Opacity,
+    Person,
+    Assignment,
+    AccountBalance
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
@@ -42,7 +48,7 @@ import {
 import dayjs from 'dayjs';
 import { formatRupiah, formatNumber } from '../../utils/format';
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
+const COLORS = ['#22c55e', '#16a34a', '#15803d', '#166534', '#14532d'];
 
 export default function DashboardHome() {
     const { data: overview } = useQuery({
@@ -91,193 +97,352 @@ export default function DashboardHome() {
     const totalHolidayToday = overview?.today?.attendances?.holiday || 0;
     const totalRecordsToday = totalPresentToday + totalAbsentToday + totalSickToday + totalHolidayToday;
 
+    // Calculate dynamic percentages for progress bars
+    const calculatePercentage = (current: number, max: number, fallback: number = 50) => {
+        if (!max || max === 0) return fallback;
+        const percentage = Math.min((current / max) * 100, 100);
+        return Math.max(percentage, 5); // Minimum 5% for visibility
+    };
+
+    // Progress bar calculations based on targets or historical data
+    const collectorsPercentage = calculatePercentage(overview?.collectors || 0, 50, 75); // Target: 50 collectors
+    const employeesPercentage = calculatePercentage(overview?.employees || 0, 20, 60); // Target: 20 employees
+    const milkPercentage = calculatePercentage(overview?.today?.collections?.total_milk || 0, 5000, 85); // Target: 5000L per day
+    const incomePercentage = calculatePercentage(overview?.monthly?.collections?.total_income || 0, 5000000, 90); // Target: 5M per month
+
     // Prepare financial summary data
     const financialSummary = [
         {
             title: 'Total Pemasukan',
             value: formatRupiah(overview?.monthly?.income?.total_amount || 0),
-            icon: <TrendingUp sx={{ color: '#4CAF50' }} />,
-            color: '#4CAF50'
+            icon: <TrendingUp sx={{ color: '#22c55e' }} />,
+            color: '#22c55e',
+            bgColor: '#dcfce7'
         },
         {
             title: 'Total Pengeluaran',
             value: formatRupiah(overview?.monthly?.expenses?.total_amount || 0),
-            icon: <TrendingDown sx={{ color: '#F44336' }} />,
-            color: '#F44336'
+            icon: <TrendingDown sx={{ color: '#ef4444' }} />,
+            color: '#ef4444',
+            bgColor: '#fef2f2'
         },
         {
             title: 'Biaya Pemeliharaan',
             value: formatRupiah(overview?.monthly?.maintenance?.total_cost || 0),
-            icon: <Build sx={{ color: '#FF9800' }} />,
-            color: '#FF9800'
+            icon: <Build sx={{ color: '#f59e0b' }} />,
+            color: '#f59e0b',
+            bgColor: '#fef3c7'
         },
         {
             title: 'Profit',
             value: formatRupiah((overview?.monthly?.income?.total_amount || 0) -
                 (overview?.monthly?.expenses?.total_amount || 0) -
                 (overview?.monthly?.maintenance?.total_cost || 0)),
-            icon: <MonetizationOn sx={{ color: '#2196F3' }} />,
-            color: '#2196F3'
+            icon: <MonetizationOn sx={{ color: '#3b82f6' }} />,
+            color: '#3b82f6',
+            bgColor: '#eff6ff'
         }
     ];
 
     return (
-        <Box sx={{ p: 3 }}>
-            {/* Header */}
-            <Box sx={{ mb: 4 }}>
-                <Typography variant="h4" fontWeight={700} gutterBottom>
-                    Dashboard Koperasi Susu
-                </Typography>
-                <Typography variant="body1" color="text.secondary">
-                    Selamat datang! Berikut adalah ringkasan aktivitas koperasi hari ini
+        <Box sx={{ p: { xs: 2, md: 3 }, bgcolor: '#f8fafc', minHeight: '100vh' }}>
+            {/* Modern Header */}
+            <Box sx={{ mb: 4, p: { xs: 3, md: 4 }, bgcolor: 'white', borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Box sx={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: 2,
+                        bgcolor: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        mr: 3,
+                        background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)'
+                    }}>
+                        <Opacity sx={{ color: 'white', fontSize: 24 }} />
+                    </Box>
+                    <Box>
+                        <Typography variant="h4" sx={{ fontWeight: 700, color: '#1f2937', mb: 0.5 }}>
+                            Koperasi Susu Banyu Makmur
+                        </Typography>
+                        <Typography variant="body1" sx={{ color: '#6b7280' }}>
+                            Dashboard Monitoring & Analytics
+                        </Typography>
+                    </Box>
+                </Box>
+                <Typography variant="body2" sx={{ color: '#9ca3af', mt: 2 }}>
+                    Selamat datang! Pantau aktivitas dan performa koperasi secara real-time
                 </Typography>
             </Box>
 
-            {/* Key Metrics Cards */}
+            {/* Modern Metrics Cards */}
             <Grid container spacing={3} sx={{ mb: 4 }}>
                 <Grid item xs={12} sm={6} md={3}>
-                    <Card sx={{
-                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                        color: 'white',
-                        height: '100%'
+                    <Card elevation={0} sx={{
+                        borderRadius: 3,
+                        border: '1px solid #e5e7eb',
+                        bgcolor: '#ffffff',
+                        overflow: 'hidden',
+                        '&:hover': {
+                            boxShadow: '0 4px 20px rgba(34, 197, 94, 0.15)',
+                            transform: 'translateY(-2px)',
+                            transition: 'all 0.3s ease-in-out'
+                        }
                     }}>
-                        <CardContent>
-                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                                <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', mr: 2 }}>
-                                    <People />
-                                </Avatar>
-                                <Box>
-                                    <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                        <CardContent sx={{ p: 3 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                                <Box sx={{
+                                    width: 48,
+                                    height: 48,
+                                    borderRadius: 2,
+                                    bgcolor: '#dcfce7',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}>
+                                    <People sx={{ color: '#22c55e', fontSize: 24 }} />
+                                </Box>
+                                <Box sx={{ textAlign: 'right' }}>
+                                    <Typography variant="body2" sx={{ color: '#6b7280', fontSize: '0.875rem', fontWeight: 500 }}>
                                         Total Pengepul
                                     </Typography>
-                                    <Typography
-                                        variant="h4"
-                                        fontWeight={700}
-                                        sx={{
-                                            fontSize: { xs: 26, sm: 28, md: 32 },
-                                            lineHeight: 1.1,
-                                            wordBreak: 'break-word',
-                                            whiteSpace: 'normal'
-                                        }}
-                                    >
-                                        {formatNumber(overview?.collectors || 0)}
-                                    </Typography>
+                                    <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', gap: 1 }}>
+                                        <Typography variant="h4" sx={{
+                                            fontWeight: 700,
+                                            color: '#1f2937',
+                                            fontSize: { xs: '1.75rem', md: '2rem' },
+                                            lineHeight: 1.2
+                                        }}>
+                                            {formatNumber(overview?.collectors || 0)}
+                                        </Typography>
+                                        <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '0.75rem' }}>
+                                            /50
+                                        </Typography>
+                                    </Box>
                                 </Box>
+                            </Box>
+                            <Box sx={{
+                                height: 2,
+                                bgcolor: '#f3f4f6',
+                                borderRadius: 1,
+                                overflow: 'hidden'
+                            }}>
+                                <Box sx={{
+                                    height: '100%',
+                                    width: `${collectorsPercentage}%`,
+                                    bgcolor: '#22c55e',
+                                    borderRadius: 1,
+                                    transition: 'width 0.5s ease-in-out'
+                                }} />
                             </Box>
                         </CardContent>
                     </Card>
                 </Grid>
 
                 <Grid item xs={12} sm={6} md={3}>
-                    <Card sx={{
-                        background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-                        color: 'white',
-                        height: '100%'
+                    <Card elevation={0} sx={{
+                        borderRadius: 3,
+                        border: '1px solid #e5e7eb',
+                        bgcolor: '#ffffff',
+                        overflow: 'hidden',
+                        '&:hover': {
+                            boxShadow: '0 4px 20px rgba(34, 197, 94, 0.15)',
+                            transform: 'translateY(-2px)',
+                            transition: 'all 0.3s ease-in-out'
+                        }
                     }}>
-                        <CardContent>
-                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                                <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', mr: 2 }}>
-                                    <People />
-                                </Avatar>
-                                <Box>
-                                    <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                        <CardContent sx={{ p: 3 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                                <Box sx={{
+                                    width: 48,
+                                    height: 48,
+                                    borderRadius: 2,
+                                    bgcolor: '#dcfce7',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}>
+                                    <Person sx={{ color: '#22c55e', fontSize: 24 }} />
+                                </Box>
+                                <Box sx={{ textAlign: 'right' }}>
+                                    <Typography variant="body2" sx={{ color: '#6b7280', fontSize: '0.875rem', fontWeight: 500 }}>
                                         Total Karyawan
                                     </Typography>
-                                    <Typography
-                                        variant="h4"
-                                        fontWeight={700}
-                                        sx={{
-                                            fontSize: { xs: 26, sm: 28, md: 32 },
-                                            lineHeight: 1.1,
-                                            wordBreak: 'break-word',
-                                            whiteSpace: 'normal'
-                                        }}
-                                    >
-                                        {formatNumber(overview?.employees || 0)}
-                                    </Typography>
+                                    <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', gap: 1 }}>
+                                        <Typography variant="h4" sx={{
+                                            fontWeight: 700,
+                                            color: '#1f2937',
+                                            fontSize: { xs: '1.75rem', md: '2rem' },
+                                            lineHeight: 1.2
+                                        }}>
+                                            {formatNumber(overview?.employees || 0)}
+                                        </Typography>
+                                        <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '0.75rem' }}>
+                                            /20
+                                        </Typography>
+                                    </Box>
                                 </Box>
+                            </Box>
+                            <Box sx={{
+                                height: 2,
+                                bgcolor: '#f3f4f6',
+                                borderRadius: 1,
+                                overflow: 'hidden'
+                            }}>
+                                <Box sx={{
+                                    height: '100%',
+                                    width: `${employeesPercentage}%`,
+                                    bgcolor: '#22c55e',
+                                    borderRadius: 1,
+                                    transition: 'width 0.5s ease-in-out'
+                                }} />
                             </Box>
                         </CardContent>
                     </Card>
                 </Grid>
 
                 <Grid item xs={12} sm={6} md={3}>
-                    <Card sx={{
-                        background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-                        color: 'white',
-                        height: '100%'
+                    <Card elevation={0} sx={{
+                        borderRadius: 3,
+                        border: '1px solid #e5e7eb',
+                        bgcolor: '#ffffff',
+                        overflow: 'hidden',
+                        '&:hover': {
+                            boxShadow: '0 4px 20px rgba(34, 197, 94, 0.15)',
+                            transform: 'translateY(-2px)',
+                            transition: 'all 0.3s ease-in-out'
+                        }
                     }}>
-                        <CardContent>
-                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                                <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', mr: 2 }}>
-                                    <LocalShipping />
-                                </Avatar>
-                                <Box>
-                                    <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                        <CardContent sx={{ p: 3 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                                <Box sx={{
+                                    width: 48,
+                                    height: 48,
+                                    borderRadius: 2,
+                                    bgcolor: '#dcfce7',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}>
+                                    <Opacity sx={{ color: '#22c55e', fontSize: 24 }} />
+                                </Box>
+                                <Box sx={{ textAlign: 'right' }}>
+                                    <Typography variant="body2" sx={{ color: '#6b7280', fontSize: '0.875rem', fontWeight: 500 }}>
                                         Susu Hari Ini
                                     </Typography>
-                                    <Typography
-                                        variant="h4"
-                                        fontWeight={700}
-                                        sx={{
-                                            fontSize: { xs: 26, sm: 28, md: 32 },
-                                            lineHeight: 1.1,
-                                            wordBreak: 'break-word',
-                                            whiteSpace: 'normal'
-                                        }}
-                                    >
-                                        {formatNumber(overview?.today?.collections?.total_milk || 0)} L
-                                    </Typography>
+                                    <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', gap: 1 }}>
+                                        <Typography variant="h4" sx={{
+                                            fontWeight: 700,
+                                            color: '#1f2937',
+                                            fontSize: { xs: '1.75rem', md: '2rem' },
+                                            lineHeight: 1.2
+                                        }}>
+                                            {formatNumber(overview?.today?.collections?.total_milk || 0)} L
+                                        </Typography>
+                                        <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '0.75rem' }}>
+                                            /5000L
+                                        </Typography>
+                                    </Box>
                                 </Box>
+                            </Box>
+                            <Box sx={{
+                                height: 2,
+                                bgcolor: '#f3f4f6',
+                                borderRadius: 1,
+                                overflow: 'hidden'
+                            }}>
+                                <Box sx={{
+                                    height: '100%',
+                                    width: `${milkPercentage}%`,
+                                    bgcolor: '#22c55e',
+                                    borderRadius: 1,
+                                    transition: 'width 0.5s ease-in-out'
+                                }} />
                             </Box>
                         </CardContent>
                     </Card>
                 </Grid>
 
                 <Grid item xs={12} sm={6} md={3}>
-                    <Card sx={{
-                        background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
-                        color: 'white',
-                        height: '100%'
+                    <Card elevation={0} sx={{
+                        borderRadius: 3,
+                        border: '1px solid #e5e7eb',
+                        bgcolor: '#ffffff',
+                        overflow: 'hidden',
+                        '&:hover': {
+                            boxShadow: '0 4px 20px rgba(34, 197, 94, 0.15)',
+                            transform: 'translateY(-2px)',
+                            transition: 'all 0.3s ease-in-out'
+                        }
                     }}>
-                        <CardContent>
-                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                                <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', mr: 2 }}>
-                                    <AttachMoney />
-                                </Avatar>
-                                <Box>
-                                    <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                                        Pendapatan Bulan Ini
+                        <CardContent sx={{ p: 3 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                                <Box sx={{
+                                    width: 48,
+                                    height: 48,
+                                    borderRadius: 2,
+                                    bgcolor: '#dcfce7',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}>
+                                    <AccountBalance sx={{ color: '#22c55e', fontSize: 24 }} />
+                                </Box>
+                                <Box sx={{ textAlign: 'right' }}>
+                                    <Typography variant="body2" sx={{ color: '#6b7280', fontSize: '0.875rem', fontWeight: 500 }}>
+                                        Biaya Koleksi Bulan Ini
                                     </Typography>
-                                    <Typography
-                                        variant="h4"
-                                        fontWeight={700}
-                                        sx={{
-                                            fontSize: { xs: 22, sm: 26, md: 30 },
-                                            lineHeight: 1.15,
-                                            wordBreak: 'break-word',
-                                            whiteSpace: 'normal'
-                                        }}
-                                    >
+                                    <Typography variant="h6" sx={{
+                                        fontWeight: 700,
+                                        color: '#1f2937',
+                                        fontSize: { xs: '1rem', md: '1.125rem' },
+                                        lineHeight: 1.2
+                                    }}>
                                         {formatRupiah(overview?.monthly?.collections?.total_income || 0)}
                                     </Typography>
+                                    <Typography variant="caption" sx={{ color: '#9ca3af', fontSize: '0.75rem' }}>
+                                        Target: Rp 5M
+                                    </Typography>
                                 </Box>
+                            </Box>
+                            <Box sx={{
+                                height: 2,
+                                bgcolor: '#f3f4f6',
+                                borderRadius: 1,
+                                overflow: 'hidden'
+                            }}>
+                                <Box sx={{
+                                    height: '100%',
+                                    width: `${incomePercentage}%`,
+                                    bgcolor: '#22c55e',
+                                    borderRadius: 1,
+                                    transition: 'width 0.5s ease-in-out'
+                                }} />
                             </Box>
                         </CardContent>
                     </Card>
                 </Grid>
             </Grid>
 
-            {/* Charts Section */}
+            {/* Modern Charts Section */}
             <Grid container spacing={3} sx={{ mb: 4}}>
                 {/* Koleksi Susu 7 Hari Terakhir */}
                 <Grid item xs={12} lg={8}>
-                    <Card sx={{ height: '100%' }}>
-                        <CardContent>
-                            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                    <Card elevation={0} sx={{
+                        borderRadius: 3,
+                        border: '1px solid #e5e7eb',
+                        bgcolor: '#ffffff',
+                        overflow: 'hidden'
+                    }}>
+                        <Box sx={{ bgcolor: '#f8fafc', p: 3, borderBottom: '1px solid #e5e7eb' }}>
+                            <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', fontWeight: 600, color: '#1f2937' }}>
+                                <TrendingUp sx={{ mr: 1.5, fontSize: 20, color: '#22c55e' }} />
                                 Trend Koleksi Susu (7 Hari Terakhir)
                             </Typography>
-                            <Box sx={{ height: 300, mt: 2 }}>
+                        </Box>
+                        <CardContent sx={{ p: 3 }}>
+                            <Box sx={{ height: 300, mt: 1 }}>
                                 <ResponsiveContainer>
                                     <AreaChart data={(weekly ?? []).map((d: any) => ({
                                         ...d,
@@ -290,29 +455,33 @@ export default function DashboardHome() {
                                         <YAxis yAxisId="left" />
                                         <YAxis yAxisId="right" orientation="right" />
                                         <RechartsTooltip
-                                            formatter={(value: any, name: any) => [
-                                                name === 'total_milk' ? `${value} L` : formatRupiah(value),
-                                                name === 'total_milk' ? 'Total Susu' : 'Pendapatan'
-                                            ]}
+                                            formatter={(value: any, name: any) => {
+                                                if (name === 'total_milk') {
+                                                    return [`${formatNumber(value)} L`, 'Total Susu'];
+                                                } else if (name === 'total_income') {
+                                                    return [formatRupiah(value), 'Biaya Koleksi'];
+                                                }
+                                                return [value, name];
+                                            }}
                                         />
                                         <Legend />
                                         <Area
                                             yAxisId="left"
                                             type="monotone"
                                             dataKey="total_milk"
-                                            stroke="#4CAF50"
-                                            fill="#4CAF50"
-                                            fillOpacity={0.3}
+                                            stroke="#10b981"
+                                            fill="#10b981"
+                                            fillOpacity={0.2}
                                             name="Total Susu"
                                         />
                                         <Area
                                             yAxisId="right"
                                             type="monotone"
                                             dataKey="total_income"
-                                            stroke="#2196F3"
-                                            fill="#2196F3"
-                                            fillOpacity={0.3}
-                                            name="Pendapatan"
+                                            stroke="#059669"
+                                            fill="#059669"
+                                            fillOpacity={0.2}
+                                            name="Biaya Koleksi"
                                         />
                                     </AreaChart>
                                 </ResponsiveContainer>
@@ -323,56 +492,65 @@ export default function DashboardHome() {
 
                 {/* Absensi Hari Ini */}
                 <Grid item xs={12} lg={4}>
-                    <Card sx={{ height: '100%' }}>
-                        <CardContent>
-                            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                    <Card elevation={0} sx={{
+                        borderRadius: 3,
+                        border: '1px solid #e5e7eb',
+                        bgcolor: '#ffffff',
+                        overflow: 'hidden',
+                        height: '100%'
+                    }}>
+                        <Box sx={{ bgcolor: '#f8fafc', p: 3, borderBottom: '1px solid #e5e7eb' }}>
+                            <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', fontWeight: 600, color: '#1f2937' }}>
+                                <Assignment sx={{ mr: 1.5, fontSize: 20, color: '#22c55e' }} />
                                 Absensi Hari Ini
                             </Typography>
+                        </Box>
+                        <CardContent sx={{ p: 3 }}>
                             {/* Check if there is any attendance data for today before rendering the summary */}
                             {totalRecordsToday > 0 ? (
                                 <Box>
                                     <Grid container spacing={2} sx={{ mb: 2 }}>
                                         <Grid item xs={6}>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', p: 1, bgcolor: '#e8f5e9', borderRadius: 1 }}>
-                                                <CheckCircle color="success" />
-                                                <Box ml={1}>
-                                                    <Typography variant="body2" color="text.secondary">Hadir</Typography>
-                                                    <Typography variant="h6" fontWeight={700} color="success.main">{totalPresentToday}</Typography>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', p: 2, bgcolor: '#dcfce7', borderRadius: 2 }}>
+                                                <CheckCircle sx={{ color: '#22c55e', mr: 1 }} />
+                                                <Box>
+                                                    <Typography variant="body2" sx={{ color: '#6b7280', fontSize: '0.75rem' }}>Hadir</Typography>
+                                                    <Typography variant="h6" sx={{ fontWeight: 700, color: '#22c55e' }}>{totalPresentToday}</Typography>
                                                 </Box>
                                             </Box>
                                         </Grid>
                                         <Grid item xs={6}>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', p: 1, bgcolor: '#ffebee', borderRadius: 1 }}>
-                                                <Cancel color="error" />
-                                                <Box ml={1}>
-                                                    <Typography variant="body2" color="text.secondary">Ijin</Typography>
-                                                    <Typography variant="h6" fontWeight={700} color="error.main">{totalAbsentToday}</Typography>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', p: 2, bgcolor: '#fef2f2', borderRadius: 2 }}>
+                                                <Cancel sx={{ color: '#ef4444', mr: 1 }} />
+                                                <Box>
+                                                    <Typography variant="body2" sx={{ color: '#6b7280', fontSize: '0.75rem' }}>Ijin</Typography>
+                                                    <Typography variant="h6" sx={{ fontWeight: 700, color: '#ef4444' }}>{totalAbsentToday}</Typography>
                                                 </Box>
                                             </Box>
                                         </Grid>
                                         <Grid item xs={6}>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', p: 1, bgcolor: '#fff3e0', borderRadius: 1 }}>
-                                                <LocalHospital color="warning" />
-                                                <Box ml={1}>
-                                                    <Typography variant="body2" color="text.secondary">Sakit</Typography>
-                                                    <Typography variant="h6" fontWeight={700} color="warning.main">{totalSickToday}</Typography>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', p: 2, bgcolor: '#fef3c7', borderRadius: 2 }}>
+                                                <LocalHospital sx={{ color: '#f59e0b', mr: 1 }} />
+                                                <Box>
+                                                    <Typography variant="body2" sx={{ color: '#6b7280', fontSize: '0.75rem' }}>Sakit</Typography>
+                                                    <Typography variant="h6" sx={{ fontWeight: 700, color: '#f59e0b' }}>{totalSickToday}</Typography>
                                                 </Box>
                                             </Box>
                                         </Grid>
                                         <Grid item xs={6}>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', p: 1, bgcolor: '#e3f2fd', borderRadius: 1 }}>
-                                                <WbSunny color="info" />
-                                                <Box ml={1}>
-                                                    <Typography variant="body2" color="text.secondary">Libur</Typography>
-                                                    <Typography variant="h6" fontWeight={700} color="info.main">{totalHolidayToday}</Typography>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', p: 2, bgcolor: '#eff6ff', borderRadius: 2 }}>
+                                                <WbSunny sx={{ color: '#3b82f6', mr: 1 }} />
+                                                <Box>
+                                                    <Typography variant="body2" sx={{ color: '#6b7280', fontSize: '0.75rem' }}>Libur</Typography>
+                                                    <Typography variant="h6" sx={{ fontWeight: 700, color: '#3b82f6' }}>{totalHolidayToday}</Typography>
                                                 </Box>
                                             </Box>
                                         </Grid>
                                     </Grid>
                                 </Box>
                             ) : (
-                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 6, bgcolor: 'grey.50', borderRadius: 1, color: 'text.secondary' }}>
-                                    <Typography>Belum ada data absensi hari ini</Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 6, bgcolor: '#f9fafb', borderRadius: 2, color: '#6b7280' }}>
+                                    <Typography sx={{ fontSize: '0.875rem' }}>Belum ada data absensi hari ini</Typography>
                                 </Box>
                             )}
                         </CardContent>
@@ -380,39 +558,67 @@ export default function DashboardHome() {
                 </Grid>
             </Grid>
 
-            {/* Financial Summary */}
+            {/* Modern Financial Summary */}
             <Grid container spacing={3} sx={{ mb: 4 }}>
                 {financialSummary.map((item, index) => (
                     <Grid item xs={12} sm={6} md={3} key={index}>
-                        <Card sx={{
-                            borderLeft: `4px solid ${item.color}`,
-                            height: '100%'
+                        <Card elevation={0} sx={{
+                            borderRadius: 3,
+                            border: '1px solid #e5e7eb',
+                            bgcolor: '#ffffff',
+                            overflow: 'hidden',
+                            '&:hover': {
+                                boxShadow: '0 4px 20px rgba(34, 197, 94, 0.1)',
+                                transform: 'translateY(-1px)',
+                                transition: 'all 0.3s ease-in-out'
+                            }
                         }}>
-                            <CardContent>
-                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                                    {item.icon}
-                                    <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-                                        {item.title}
-                                    </Typography>
+                            <CardContent sx={{ p: 3 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                                    <Box sx={{
+                                        width: 40,
+                                        height: 40,
+                                        borderRadius: 2,
+                                        bgcolor: item.bgColor,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        mr: 2
+                                    }}>
+                                        {item.icon}
+                                    </Box>
+                                    <Box>
+                                        <Typography variant="body2" sx={{ color: '#6b7280', fontSize: '0.75rem', fontWeight: 500 }}>
+                                            {item.title}
+                                        </Typography>
+                                        <Typography variant="h6" sx={{ fontWeight: 700, color: '#1f2937', fontSize: '1rem' }}>
+                                            {item.value}
+                                        </Typography>
+                                    </Box>
                                 </Box>
-                                <Typography variant="h6" fontWeight={700} color={item.color}>
-                                    {item.value}
-                                </Typography>
                             </CardContent>
                         </Card>
                     </Grid>
                 ))}
             </Grid>
 
-            {/* Keuangan Bulanan */}
+            {/* Modern Keuangan Bulanan */}
             <Grid container spacing={3} sx={{ mb: 4 }}>
                 <Grid item xs={12}>
-                    <Card>
-                        <CardContent>
-                            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                    <Card elevation={0} sx={{
+                        borderRadius: 3,
+                        border: '1px solid #e5e7eb',
+                        bgcolor: '#ffffff',
+                        overflow: 'hidden'
+                    }}>
+                        <Box sx={{ bgcolor: '#f8fafc', p: 3, borderBottom: '1px solid #e5e7eb' }}>
+                            <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', fontWeight: 600, color: '#1f2937' }}>
+                                <MonetizationOn sx={{ mr: 1.5, fontSize: 20, color: '#22c55e' }} />
                                 Analisis Keuangan Bulanan
                             </Typography>
-                            <Box sx={{ height: 400, mt: 2 }}>
+                        </Box>
+                        <CardContent sx={{ p: 3 }}>
+                            <Box sx={{ height: 400, mt: 1 }}>
                                 <ResponsiveContainer>
                                     <BarChart data={(financial ?? []).map((item: any) => ({
                                         ...item,
@@ -426,18 +632,21 @@ export default function DashboardHome() {
                                         <XAxis dataKey="month" />
                                         <YAxis />
                                         <RechartsTooltip
-                                            formatter={(value: any, name: any) => [
-                                                formatRupiah(value),
-                                                name === 'income' ? 'Pemasukan' :
-                                                name === 'expenses' ? 'Pengeluaran' :
-                                                name === 'maintenance' ? 'Pemeliharaan' : 'Profit'
-                                            ]}
+                                            formatter={(value: any, name: any) => {
+                                                const labelMap: { [key: string]: string } = {
+                                                    'income': 'Pemasukan',
+                                                    'expenses': 'Pengeluaran',
+                                                    'maintenance': 'Pemeliharaan',
+                                                    'profit': 'Profit'
+                                                };
+                                                return [formatRupiah(value), labelMap[name] || name];
+                                            }}
                                         />
                                         <Legend />
-                                        <Bar dataKey="income" fill="#4CAF50" name="Pemasukan" />
-                                        <Bar dataKey="expenses" fill="#F44336" name="Pengeluaran" />
-                                        <Bar dataKey="maintenance" fill="#FF9800" name="Pemeliharaan" />
-                                        <Bar dataKey="profit" fill="#2196F3" name="Profit" />
+                                        <Bar dataKey="income" fill="#22c55e" name="Pemasukan" />
+                                        <Bar dataKey="expenses" fill="#ef4444" name="Pengeluaran" />
+                                        <Bar dataKey="maintenance" fill="#f59e0b" name="Pemeliharaan" />
+                                        <Bar dataKey="profit" fill="#3b82f6" name="Profit" />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </Box>
@@ -446,31 +655,39 @@ export default function DashboardHome() {
                 </Grid>
             </Grid>
 
-            {/* Recent Activities */}
+            {/* Modern Recent Activities */}
             <Grid container spacing={3}>
                 {/* Recent Collections */}
                 <Grid item xs={12} md={6}>
-                    <Card>
-                        <CardContent>
-                            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                    <Card elevation={0} sx={{
+                        borderRadius: 3,
+                        border: '1px solid #e5e7eb',
+                        bgcolor: '#ffffff',
+                        overflow: 'hidden'
+                    }}>
+                        <Box sx={{ bgcolor: '#f8fafc', p: 3, borderBottom: '1px solid #e5e7eb' }}>
+                            <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', fontWeight: 600, color: '#1f2937' }}>
+                                <Opacity sx={{ mr: 1.5, fontSize: 20, color: '#22c55e' }} />
                                 Koleksi Susu Terbaru
                             </Typography>
-                            <Table size="small">
+                        </Box>
+                        <CardContent sx={{ p: 0 }}>
+                            <Table sx={{ '& .MuiTableCell-head': { bgcolor: '#f9fafb', color: '#374151', fontWeight: 600, fontSize: '0.875rem' } }}>
                                 <TableHead>
                                     <TableRow>
-                                        <TableCell>Tanggal</TableCell>
-                                        <TableCell>Pengepul</TableCell>
-                                        <TableCell align="right">Total (L)</TableCell>
-                                        <TableCell align="right">Pendapatan</TableCell>
+                                        <TableCell sx={{ py: 2, px: 3 }}>Tanggal</TableCell>
+                                        <TableCell sx={{ py: 2, px: 3 }}>Pengepul</TableCell>
+                                        <TableCell align="right" sx={{ py: 2, px: 3 }}>Total (L)</TableCell>
+                                        <TableCell align="right" sx={{ py: 2, px: 3 }}>Biaya</TableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
                                     {(recentCollections ?? []).slice(0, 5).map((row: any) => (
-                                        <TableRow key={row.id} hover>
-                                            <TableCell>{dayjs(row.date).format('DD/MM/YYYY')}</TableCell>
-                                            <TableCell>{row.collector_name}</TableCell>
-                                            <TableCell align="right">{formatNumber(row.total_amount)}</TableCell>
-                                            <TableCell align="right">{formatRupiah(row.total_income)}</TableCell>
+                                        <TableRow key={row.id} sx={{ '&:hover': { bgcolor: '#f8fafc' } }}>
+                                            <TableCell sx={{ py: 2, px: 3, color: '#6b7280', fontSize: '0.875rem' }}>{dayjs(row.date).format('DD/MM/YYYY')}</TableCell>
+                                            <TableCell sx={{ py: 2, px: 3, fontWeight: 500, color: '#111827' }}>{row.collector_name}</TableCell>
+                                            <TableCell align="right" sx={{ py: 2, px: 3, fontWeight: 600, color: '#22c55e' }}>{formatNumber(row.total_amount)}</TableCell>
+                                            <TableCell align="right" sx={{ py: 2, px: 3, color: '#111827' }}>{formatRupiah(row.total_income)}</TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
@@ -481,25 +698,33 @@ export default function DashboardHome() {
 
                 {/* Recent Shipments */}
                 <Grid item xs={12} md={6}>
-                    <Card>
-                        <CardContent>
-                            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                    <Card elevation={0} sx={{
+                        borderRadius: 3,
+                        border: '1px solid #e5e7eb',
+                        bgcolor: '#ffffff',
+                        overflow: 'hidden'
+                    }}>
+                        <Box sx={{ bgcolor: '#f8fafc', p: 3, borderBottom: '1px solid #e5e7eb' }}>
+                            <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', fontWeight: 600, color: '#1f2937' }}>
+                                <LocalShipping sx={{ mr: 1.5, fontSize: 20, color: '#22c55e' }} />
                                 Pengiriman Terbaru
                             </Typography>
-                            <Table size="small">
+                        </Box>
+                        <CardContent sx={{ p: 0 }}>
+                            <Table sx={{ '& .MuiTableCell-head': { bgcolor: '#f9fafb', color: '#374151', fontWeight: 600, fontSize: '0.875rem' } }}>
                                 <TableHead>
                                     <TableRow>
-                                        <TableCell>Tanggal</TableCell>
-                                        <TableCell>Tujuan</TableCell>
-                                        <TableCell align="right">Jumlah (L)</TableCell>
+                                        <TableCell sx={{ py: 2, px: 3 }}>Tanggal</TableCell>
+                                        <TableCell sx={{ py: 2, px: 3 }}>Tujuan</TableCell>
+                                        <TableCell align="right" sx={{ py: 2, px: 3 }}>Jumlah (L)</TableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
                                     {(recentShipments ?? []).slice(0, 5).map((row: any) => (
-                                        <TableRow key={row.id} hover>
-                                            <TableCell>{dayjs(row.date).format('DD/MM/YYYY')}</TableCell>
-                                            <TableCell>{row.destination}</TableCell>
-                                            <TableCell align="right">{formatNumber(row.amount)}</TableCell>
+                                        <TableRow key={row.id} sx={{ '&:hover': { bgcolor: '#f8fafc' } }}>
+                                            <TableCell sx={{ py: 2, px: 3, color: '#6b7280', fontSize: '0.875rem' }}>{dayjs(row.date).format('DD/MM/YYYY')}</TableCell>
+                                            <TableCell sx={{ py: 2, px: 3, fontWeight: 500, color: '#111827' }}>{row.destination}</TableCell>
+                                            <TableCell align="right" sx={{ py: 2, px: 3, fontWeight: 600, color: '#22c55e' }}>{formatNumber(row.amount)}</TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
@@ -510,29 +735,46 @@ export default function DashboardHome() {
 
                 {/* Recent Attendances */}
                 <Grid item xs={12} md={6}>
-                    <Card>
-                        <CardContent>
-                            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                    <Card elevation={0} sx={{
+                        borderRadius: 3,
+                        border: '1px solid #e5e7eb',
+                        bgcolor: '#ffffff',
+                        overflow: 'hidden'
+                    }}>
+                        <Box sx={{ bgcolor: '#f8fafc', p: 3, borderBottom: '1px solid #e5e7eb' }}>
+                            <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', fontWeight: 600, color: '#1f2937' }}>
+                                <Assignment sx={{ mr: 1.5, fontSize: 20, color: '#22c55e' }} />
                                 Absensi Terbaru
                             </Typography>
-                            <Table size="small">
+                        </Box>
+                        <CardContent sx={{ p: 0 }}>
+                            <Table sx={{ '& .MuiTableCell-head': { bgcolor: '#f9fafb', color: '#374151', fontWeight: 600, fontSize: '0.875rem' } }}>
                                 <TableHead>
                                     <TableRow>
-                                        <TableCell>Tanggal</TableCell>
-                                        <TableCell>Karyawan</TableCell>
-                                        <TableCell>Status</TableCell>
+                                        <TableCell sx={{ py: 2, px: 3 }}>Tanggal</TableCell>
+                                        <TableCell sx={{ py: 2, px: 3 }}>Karyawan</TableCell>
+                                        <TableCell sx={{ py: 2, px: 3 }}>Status</TableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
                                     {(recentAttendances ?? []).slice(0, 5).map((row: any) => (
-                                        <TableRow key={row.id} hover>
-                                            <TableCell>{dayjs(row.date).format('DD/MM/YYYY')}</TableCell>
-                                            <TableCell>{row.employee_name}</TableCell>
-                                            <TableCell>
+                                        <TableRow key={row.id} sx={{ '&:hover': { bgcolor: '#f8fafc' } }}>
+                                            <TableCell sx={{ py: 2, px: 3, color: '#6b7280', fontSize: '0.875rem' }}>{dayjs(row.date).format('DD/MM/YYYY')}</TableCell>
+                                            <TableCell sx={{ py: 2, px: 3, fontWeight: 500, color: '#111827' }}>{row.employee_name}</TableCell>
+                                            <TableCell sx={{ py: 2, px: 3 }}>
                                                 <Chip
                                                     label={row.status === 'hadir' ? 'Hadir' : row.status === 'ijin' ? 'Ijin' : row.status === 'sakit' ? 'Sakit' : 'Libur'}
-                                                    color={row.status === 'hadir' ? 'success' : row.status === 'ijin' ? 'error' : row.status === 'sakit' ? 'warning' : 'info'}
                                                     size="small"
+                                                    sx={{
+                                                        bgcolor: row.status === 'hadir' ? '#dcfce7' :
+                                                               row.status === 'ijin' ? '#fef2f2' :
+                                                               row.status === 'sakit' ? '#fef3c7' : '#eff6ff',
+                                                        color: row.status === 'hadir' ? '#22c55e' :
+                                                               row.status === 'ijin' ? '#ef4444' :
+                                                               row.status === 'sakit' ? '#f59e0b' : '#3b82f6',
+                                                        fontWeight: 600,
+                                                        fontSize: '0.75rem'
+                                                    }}
                                                 />
                                             </TableCell>
                                         </TableRow>

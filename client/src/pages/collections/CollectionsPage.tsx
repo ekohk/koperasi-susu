@@ -6,6 +6,11 @@ import dayjs from 'dayjs';
 import { useEffect, useState } from 'react';
 import { formatNumber, formatRupiah, downloadExcel } from '../../utils/format';
 import { useAuth } from '../../auth/AuthContext';
+import PageHeader from '../../components/PageHeader';
+import ModernTable, { ModernTableCell, ModernTableRow } from '../../components/ModernTable';
+import ModernButton, { ModernIconButton } from '../../components/ModernButton';
+import { showSuccess, showError, showWarning, showConfirm, showDeleteConfirm } from '../../utils/sweetalert';
+import Swal from 'sweetalert2';
 
 export default function CollectionsPage() {
 	const [filters, setFilters] = useState({ start_date: '', end_date: '' });
@@ -39,6 +44,7 @@ export default function CollectionsPage() {
 			setCollectors(res.data?.data ?? []);
 		} catch (error: any) {
 			console.error('Gagal memuat daftar pengepul:', error?.response?.data || error?.message || error);
+			showError('Gagal memuat daftar pengepul', 'Kesalahan Sistem');
 			setCollectors([]);
 		}
 	};
@@ -50,6 +56,7 @@ export default function CollectionsPage() {
 			.then(res => setAvailableMonths(res.data.data))
 			.catch(err => {
 				console.error('Gagal memuat daftar bulan:', err?.response?.data || err?.message || err);
+				showError('Gagal memuat daftar bulan tersedia', 'Kesalahan Sistem');
 				setAvailableMonths([]);
 			});
 	}, []);
@@ -72,12 +79,12 @@ export default function CollectionsPage() {
 				date: form.date,
 				price_per_liter: Number(form.price_per_liter)
 			});
-			alert('Berhasil menambahkan koleksi susu!');
+			showSuccess('Data koleksi susu berhasil ditambahkan!', 'Berhasil');
 			setOpen(false);
 			queryClient.invalidateQueries({ queryKey: ['collections'] });
 		} catch (err: any) {
 			console.error('Save error:', err);
-			alert('Gagal menyimpan: ' + (err?.response?.data?.message || err?.message || 'Unknown error'));
+			showError('Gagal menyimpan data: ' + (err?.response?.data?.message || err?.message || 'Kesalahan tidak diketahui'), 'Gagal Menyimpan');
 		}
 	};
 
@@ -85,9 +92,9 @@ export default function CollectionsPage() {
 		setEditingCollection(row);
 		setEditForm({
 			id: row.id,
-			morning_amount: row.morning_amount || '',
-			afternoon_amount: row.afternoon_amount || '',
-			price_per_liter: row.price_per_liter || ''
+			morning_amount: row.morning_amount ? parseFloat(row.morning_amount) : '',
+			afternoon_amount: row.afternoon_amount ? parseFloat(row.afternoon_amount) : '',
+			price_per_liter: row.price_per_liter ? parseInt(row.price_per_liter) : ''
 		});
 		setEditOpen(true);
 	};
@@ -99,24 +106,25 @@ export default function CollectionsPage() {
 				afternoon_amount: Number(editForm.afternoon_amount || 0),
 				price_per_liter: Number(editForm.price_per_liter)
 			});
-			alert('Berhasil mengupdate koleksi susu!');
+			showSuccess('Data koleksi susu berhasil diperbarui!', 'Berhasil');
 			setEditOpen(false);
 			queryClient.invalidateQueries({ queryKey: ['collections'] });
 		} catch (err: any) {
 			console.error('Update error:', err);
-			alert('Gagal mengupdate: ' + (err?.response?.data?.message || err?.message || 'Unknown error'));
+			showError('Gagal memperbarui data: ' + (err?.response?.data?.message || err?.message || 'Kesalahan tidak diketahui'), 'Gagal Memperbarui');
 		}
 	};
 
 	const deleteCollection = async (id: number) => {
-		if (!confirm('Hapus koleksi susu ini?')) return;
+		const confirmed = await showDeleteConfirm('data koleksi susu ini');
+		if (!confirmed) return;
 		try {
 			await axios.delete(`/api/collections/${id}`);
-			alert('Berhasil menghapus koleksi susu!');
+			showSuccess('Data koleksi susu berhasil dihapus!', 'Berhasil');
 			queryClient.invalidateQueries({ queryKey: ['collections'] });
 		} catch (err: any) {
 			console.error('Delete error:', err);
-			alert('Gagal menghapus: ' + (err?.response?.data?.message || err?.message || 'Unknown error'));
+			showError('Gagal menghapus data: ' + (err?.response?.data?.message || err?.message || 'Kesalahan tidak diketahui'), 'Gagal Menghapus');
 		}
 	};
 
@@ -133,8 +141,32 @@ export default function CollectionsPage() {
 
 	const deleteByMonth = async () => {
 		if (!selectedMonthData) return;
-		
-		if (!confirm(`Anda yakin ingin menghapus ${selectedMonthData.record_count} data koleksi susu untuk bulan ${deleteForm.month}/${deleteForm.year}?\n\nTotal: ${selectedMonthData.record_count} record\nTotal Liter: ${selectedMonthData.total_liters?.toLocaleString()} L\nTotal Pendapatan: Rp ${selectedMonthData.total_income?.toLocaleString()}\n\nTindakan ini tidak dapat dibatalkan!`)) {
+
+		// Format angka dengan benar
+		const formattedLiters = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2, minimumFractionDigits: 0 }).format(selectedMonthData.total_liters || 0);
+		const formattedIncome = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(selectedMonthData.total_income || 0);
+
+		const result = await Swal.fire({
+			icon: 'warning',
+			title: 'Konfirmasi Hapus Bulanan',
+			html: `
+				<p>Apakah Anda yakin ingin menghapus <strong>${selectedMonthData.record_count}</strong> data koleksi susu untuk bulan <strong>${deleteForm.month}/${deleteForm.year}</strong>?</p>
+				<div style="text-align: left; margin-top: 1rem; padding: 1rem; background: #f3f4f6; border-radius: 0.5rem;">
+					<p style="margin: 0.5rem 0;"><strong>Total:</strong> ${selectedMonthData.record_count} record</p>
+					<p style="margin: 0.5rem 0;"><strong>Total Liter:</strong> ${formattedLiters} L</p>
+					<p style="margin: 0.5rem 0;"><strong>Total Pengeluaran:</strong> Rp ${formattedIncome}</p>
+				</div>
+				<p style="color: #ef4444; margin-top: 1rem; font-weight: 500;">Tindakan ini tidak dapat dibatalkan!</p>
+			`,
+			showCancelButton: true,
+			confirmButtonText: 'Ya, Hapus!',
+			cancelButtonText: 'Batal',
+			confirmButtonColor: '#ef4444',
+			cancelButtonColor: '#6b7280',
+			reverseButtons: true,
+		});
+
+		if (!result.isConfirmed) {
 			return;
 		}
 
@@ -150,67 +182,90 @@ export default function CollectionsPage() {
 			const res = await axios.get('/api/collections/stats/available-months');
 			setAvailableMonths(res.data.data);
 			
-			alert('Data berhasil dihapus!');
+			showSuccess('Data bulanan berhasil dihapus!', 'Berhasil');
 		} catch (error: any) {
-			alert('Error: ' + (error.response?.data?.message || error.message || 'Gagal menghapus data'));
+			showError('Gagal menghapus data bulanan: ' + (error.response?.data?.message || error.message || 'Kesalahan tidak diketahui'), 'Gagal Menghapus');
 		}
 	};
 
 	return (
-		<Grid container spacing={3}>
-			<Grid item xs={12}>
-				<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-					<Typography variant="h5" fontWeight={700}>Koleksi Susu</Typography>
-					<Box sx={{ display: 'flex', gap: 1 }}>
-						<TextField type="date" label="Mulai" InputLabelProps={{ shrink: true }} size="small" value={filters.start_date} onChange={(e) => setFilters({ ...filters, start_date: e.target.value })} />
-						<TextField type="date" label="Selesai" InputLabelProps={{ shrink: true }} size="small" value={filters.end_date} onChange={(e) => setFilters({ ...filters, end_date: e.target.value })} />
-						<Button variant="contained" startIcon={<Download />} onClick={doExport} color="primary">Download</Button>
-						<Button variant="contained" startIcon={<Add />} onClick={openCreate}>Tambah</Button>
-						<Button variant="outlined" color="error" startIcon={<Delete />} onClick={openDeleteDialog}>Hapus Per Bulan</Button>
-					</Box>
-				</Box>
-			</Grid>
-			<Grid item xs={12}>
-				<Card>
-					<CardContent>
-						<Table>
-							<TableHead>
-								<TableRow>
-									<TableCell>Tanggal</TableCell>
-									<TableCell>Pengepul</TableCell>
-									<TableCell align="right">Pagi (L)</TableCell>
-									<TableCell align="right">Sore (L)</TableCell>
-									<TableCell align="right">Total (L)</TableCell>
-									<TableCell align="right">Harga/L</TableCell>
-									<TableCell align="right">Pendapatan</TableCell>
-									<TableCell align="center">Aksi</TableCell>
-								</TableRow>
-							</TableHead>
-							<TableBody>
-								{(data ?? []).map((row: any) => (
-									<TableRow key={row.id} hover>
-										<TableCell>{dayjs(row.date).format('DD/MM/YYYY')}</TableCell>
-										<TableCell>{row.collector_name}</TableCell>
-										<TableCell align="right">{formatNumber(row.morning_amount)}</TableCell>
-										<TableCell align="right">{formatNumber(row.afternoon_amount)}</TableCell>
-										<TableCell align="right">{formatNumber(row.total_amount)}</TableCell>
-										<TableCell align="right">{formatRupiah(row.price_per_liter)}</TableCell>
-										<TableCell align="right">{formatRupiah(row.total_income)}</TableCell>
-										<TableCell align="center">
-											<IconButton size="small" onClick={() => openEdit(row)} color="primary">
-												<Edit />
-											</IconButton>
-											<IconButton size="small" onClick={() => deleteCollection(row.id)} color="error">
-												<Delete />
-											</IconButton>
-										</TableCell>
-									</TableRow>
-								))}
-							</TableBody>
-						</Table>
-					</CardContent>
-				</Card>
-			</Grid>
+		<Box sx={{ p: { xs: 2, md: 3 }, bgcolor: '#f8fafc', minHeight: '100vh' }}>
+			<PageHeader
+				title="Koleksi Susu"
+				description="Kelola data koleksi susu harian dari pengepul"
+				actions={
+					<>
+						<TextField
+							type="date"
+							label="Mulai"
+							InputLabelProps={{ shrink: true }}
+							size="small"
+							value={filters.start_date}
+							onChange={(e) => setFilters({ ...filters, start_date: e.target.value })}
+							sx={{ borderRadius: 2 }}
+						/>
+						<TextField
+							type="date"
+							label="Selesai"
+							InputLabelProps={{ shrink: true }}
+							size="small"
+							value={filters.end_date}
+							onChange={(e) => setFilters({ ...filters, end_date: e.target.value })}
+							sx={{ borderRadius: 2 }}
+						/>
+						<ModernButton variant="outlined" startIcon={<Download />} onClick={doExport}>
+							Download
+						</ModernButton>
+						<ModernButton startIcon={<Add />} onClick={openCreate}>
+							Tambah
+						</ModernButton>
+						<ModernButton
+							variant="outlined"
+							startIcon={<Delete />}
+							onClick={openDeleteDialog}
+							color="error"
+						>
+							Hapus Per Bulan
+						</ModernButton>
+					</>
+				}
+			/>
+
+			<ModernTable>
+				<TableHead>
+					<TableRow>
+						<ModernTableCell>Tanggal</ModernTableCell>
+						<ModernTableCell>Pengepul</ModernTableCell>
+						<ModernTableCell align="right">Pagi (L)</ModernTableCell>
+						<ModernTableCell align="right">Sore (L)</ModernTableCell>
+						<ModernTableCell align="right">Total (L)</ModernTableCell>
+						<ModernTableCell align="right">Harga/L</ModernTableCell>
+						<ModernTableCell align="right">Pendapatan</ModernTableCell>
+						<ModernTableCell align="center">Aksi</ModernTableCell>
+					</TableRow>
+				</TableHead>
+				<TableBody>
+					{(data ?? []).map((row: any) => (
+						<ModernTableRow key={row.id}>
+							<ModernTableCell variant="date">{dayjs(row.date).format('DD/MM/YYYY')}</ModernTableCell>
+							<ModernTableCell variant="name">{row.collector_name}</ModernTableCell>
+							<ModernTableCell align="right">{formatNumber(row.morning_amount)}</ModernTableCell>
+							<ModernTableCell align="right">{formatNumber(row.afternoon_amount)}</ModernTableCell>
+							<ModernTableCell align="right">{formatNumber(row.total_amount)}</ModernTableCell>
+							<ModernTableCell align="right" variant="amount">{formatRupiah(row.price_per_liter)}</ModernTableCell>
+							<ModernTableCell align="right" variant="amount">{formatRupiah(row.total_income)}</ModernTableCell>
+							<ModernTableCell align="center">
+								<ModernIconButton color="primary" onClick={() => openEdit(row)}>
+									<Edit />
+								</ModernIconButton>
+								<ModernIconButton color="error" onClick={() => deleteCollection(row.id)}>
+									<Delete />
+								</ModernIconButton>
+							</ModernTableCell>
+						</ModernTableRow>
+					))}
+				</TableBody>
+			</ModernTable>
 
 			<Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
 				<DialogTitle>Tambah Koleksi Susu</DialogTitle>
@@ -227,8 +282,8 @@ export default function CollectionsPage() {
 					<TextField label="Harga per Liter" type="number" fullWidth margin="normal" value={form.price_per_liter} onChange={(e) => setForm({ ...form, price_per_liter: e.target.value })} />
 				</DialogContent>
 				<DialogActions>
-					<Button onClick={() => setOpen(false)}>Batal</Button>
-					<Button variant="contained" onClick={save} disabled={(Number(form.morning_amount || 0) <= 0) && (Number(form.afternoon_amount || 0) <= 0)}>Simpan</Button>
+					<ModernButton variant="outlined" onClick={() => setOpen(false)}>Batal</ModernButton>
+					<ModernButton onClick={save} disabled={(Number(form.morning_amount || 0) <= 0) && (Number(form.afternoon_amount || 0) <= 0)}>Simpan</ModernButton>
 				</DialogActions>
 			</Dialog>
 
@@ -277,8 +332,8 @@ export default function CollectionsPage() {
 					)}
 				</DialogContent>
 				<DialogActions>
-					<Button onClick={() => setEditOpen(false)}>Batal</Button>
-					<Button variant="contained" onClick={saveEdit}>Simpan</Button>
+					<ModernButton variant="outlined" onClick={() => setEditOpen(false)}>Batal</ModernButton>
+					<ModernButton onClick={saveEdit}>Simpan</ModernButton>
 				</DialogActions>
 			</Dialog>
 
@@ -337,13 +392,13 @@ export default function CollectionsPage() {
 								<Grid item xs={4}>
 									<Typography variant="body2" color="text.secondary">Total Liter</Typography>
 									<Typography variant="h6" color="success.main">
-										{selectedMonthData.total_liters?.toLocaleString()} L
+										{new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2, minimumFractionDigits: 0 }).format(selectedMonthData.total_liters || 0)} L
 									</Typography>
 								</Grid>
 								<Grid item xs={4}>
-									<Typography variant="body2" color="text.secondary">Total Pendapatan</Typography>
+									<Typography variant="body2" color="text.secondary">Total Pengeluaran</Typography>
 									<Typography variant="h6" color="error.main">
-										Rp {selectedMonthData.total_income?.toLocaleString()}
+										Rp {new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(selectedMonthData.total_income || 0)}
 									</Typography>
 								</Grid>
 							</Grid>
@@ -380,17 +435,16 @@ export default function CollectionsPage() {
 					</Box>
 				</DialogContent>
 				<DialogActions>
-					<Button onClick={() => setDeleteDialogOpen(false)}>Batal</Button>
-					<Button 
-						variant="contained" 
-						color="error" 
+					<ModernButton variant="outlined" onClick={() => setDeleteDialogOpen(false)}>Batal</ModernButton>
+					<ModernButton
+						color="error"
 						onClick={deleteByMonth}
 						disabled={!selectedMonthData}
 					>
 						Hapus Data
-					</Button>
+					</ModernButton>
 				</DialogActions>
 			</Dialog>
-		</Grid>
+		</Box>
 	);
 }

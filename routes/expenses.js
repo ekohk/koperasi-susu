@@ -2,6 +2,7 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const db = require('../config/database');
 const auth = require('../middleware/auth');
+const upload = require('../middleware/upload');
 const ExcelJS = require('exceljs');
 const moment = require('moment');
 
@@ -85,7 +86,7 @@ router.get('/:id', async (req, res) => {
 // @route   POST /api/expenses
 // @desc    Create new expense
 // @access  Private
-router.post('/', [
+router.post('/', upload.single('proof_image'), [
   body('category').notEmpty().withMessage('Category is required'),
   body('amount').isFloat({ min: 0 }).withMessage('Amount must be a positive number'),
   body('date').isDate().withMessage('Valid date is required')
@@ -100,10 +101,11 @@ router.post('/', [
     }
 
     const { category, amount, date, description } = req.body;
+    const proof_image = req.file ? req.file.filename : null;
 
     const [result] = await db.promise().query(
-      'INSERT INTO expenses (category, amount, date, description) VALUES (?, ?, ?, ?)',
-      [category, amount, date, description]
+      'INSERT INTO expenses (category, amount, date, description, proof_image) VALUES (?, ?, ?, ?, ?)',
+      [category, amount, date, description, proof_image]
     );
 
     const [newExpense] = await db.promise().query(
@@ -128,7 +130,7 @@ router.post('/', [
 // @route   PUT /api/expenses/:id
 // @desc    Update expense
 // @access  Private
-router.put('/:id', [
+router.put('/:id', upload.single('proof_image'), [
   body('category').notEmpty().withMessage('Category is required'),
   body('amount').isFloat({ min: 0 }).withMessage('Amount must be a positive number'),
   body('date').isDate().withMessage('Valid date is required')
@@ -144,23 +146,27 @@ router.put('/:id', [
 
     const { category, amount, date, description } = req.body;
     const expenseId = req.params.id;
+    const proof_image = req.file ? req.file.filename : null;
 
     // Check if expense exists
     const [existingExpense] = await db.promise().query(
-      'SELECT id FROM expenses WHERE id = ?',
+      'SELECT id, proof_image FROM expenses WHERE id = ?',
       [expenseId]
     );
 
     if (existingExpense.length === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Expense not found' 
+      return res.status(404).json({
+        success: false,
+        message: 'Expense not found'
       });
     }
 
+    // If new photo uploaded, use new proof_image, otherwise keep existing
+    const finalProofImage = proof_image || existingExpense[0].proof_image;
+
     await db.promise().query(
-      'UPDATE expenses SET category = ?, amount = ?, date = ?, description = ? WHERE id = ?',
-      [category, amount, date, description, expenseId]
+      'UPDATE expenses SET category = ?, amount = ?, date = ?, description = ?, proof_image = ? WHERE id = ?',
+      [category, amount, date, description, finalProofImage, expenseId]
     );
 
     const [updatedExpense] = await db.promise().query(

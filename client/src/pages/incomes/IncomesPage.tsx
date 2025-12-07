@@ -1,10 +1,15 @@
 import { Add, Download, PhotoCamera, Visibility, Edit, Delete } from '@mui/icons-material';
-import { Box, Button, Card, CardContent, Dialog, DialogActions, DialogContent, DialogTitle, Grid, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography, IconButton } from '@mui/material';
+import { Box, Button, Card, Dialog, DialogActions, DialogContent, DialogTitle, Grid, TableBody, TableHead, TableRow, TextField, Typography } from '@mui/material';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { useState, useRef } from 'react';
 import { formatDate, formatRupiah, downloadExcel } from '../../utils/format';
 import { useAuth } from '../../auth/AuthContext';
+import dayjs from 'dayjs';
+import PageHeader from '../../components/PageHeader';
+import ModernTable, { ModernTableCell, ModernTableRow } from '../../components/ModernTable';
+import ModernButton, { ModernIconButton } from '../../components/ModernButton';
+import { showSuccess, showError, showDeleteConfirm } from '../../utils/sweetalert';
 
 const BASE_URL = 'http://localhost:5000';
 
@@ -39,6 +44,7 @@ export default function IncomesPage() {
 		const formattedDate = row.date ? new Date(row.date).toISOString().split('T')[0] : '';
 		setForm({
 			...row,
+			amount: row.amount ? parseInt(row.amount) : '',
 			date: formattedDate
 		});
 		setPreview(row.proof_image ? `${BASE_URL}/uploads/${row.proof_image}` : null);
@@ -74,83 +80,99 @@ export default function IncomesPage() {
 			}
 			setOpen(false);
 			queryClient.invalidateQueries({ queryKey: ['incomes'] });
-			alert('Berhasil disimpan!');
+			showSuccess('Data pemasukan berhasil disimpan', 'Berhasil!');
 		} catch (err: any) {
 			console.error('Save error:', err);
 			if (err.response && err.response.status === 400 && err.response.data && err.response.data.errors) {
-				const msg = err.response.data.errors.map((e: any) => e.msg).join('\n');
-				alert('Gagal menyimpan:\n' + msg);
+				const msg = err.response.data.errors.map((e: any) => e.msg).join(', ');
+				showError('Gagal menyimpan data pemasukan: ' + msg, 'Gagal Menyimpan');
 			} else {
-				alert('Gagal menyimpan: ' + (err?.message || 'Unknown error'));
+				showError('Gagal menyimpan data pemasukan: ' + (err?.message || 'Terjadi kesalahan'), 'Gagal Menyimpan');
 			}
 		}
 	};
 
 	const remove = async (id: number) => {
-		if (!confirm('Hapus pemasukan ini?')) return;
-		await axios.delete(`/api/incomes/${id}`);
-		queryClient.invalidateQueries({ queryKey: ['incomes'] });
+		const confirmed = await showDeleteConfirm('pemasukan ini');
+		if (!confirmed) return;
+		try {
+			await axios.delete(`/api/incomes/${id}`);
+			queryClient.invalidateQueries({ queryKey: ['incomes'] });
+			showSuccess('Data pemasukan berhasil dihapus', 'Berhasil!');
+		} catch (err: any) {
+			showError('Gagal menghapus data pemasukan: ' + (err?.response?.data?.message || err?.message || 'Terjadi kesalahan'), 'Gagal Menghapus');
+		}
 	};
 
 	const doExport = () => downloadExcel('/api/incomes/export/excel', token || undefined);
 
 	return (
-		<Grid container spacing={3}>
-			<Grid item xs={12}>
-				<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-					<Typography variant="h5" fontWeight={700}>Pemasukan</Typography>
-					<Box sx={{ display: 'flex', gap: 1 }}>
-						<Button variant="contained" startIcon={<Download />} onClick={doExport} color="primary">Download</Button>
-						<Button variant="contained" startIcon={<Add />} onClick={openCreate}>Tambah</Button>
-					</Box>
-				</Box>
-			</Grid>
-			<Grid item xs={12}>
-				<Card>
-					<CardContent>
-						<Table>
-							<TableHead>
-								<TableRow>
-									<TableCell>Sumber</TableCell>
-									<TableCell>Jumlah</TableCell>
-									<TableCell>Tanggal</TableCell>
-									<TableCell>Keterangan</TableCell>
-									<TableCell>Bukti</TableCell>
-															<TableCell align="center">Aksi</TableCell>
-								</TableRow>
-							</TableHead>
-							<TableBody>
-								{(data ?? []).map((row: any) => (
-									<TableRow key={row.id} hover>
-										<TableCell>{row.source}</TableCell>
-										<TableCell>{formatRupiah(row.amount)}</TableCell>
-										<TableCell>{formatDate(row.date)}</TableCell>
-										<TableCell>{row.description}</TableCell>
-										<TableCell>
-											{row.proof_image ? (
-												<a href={`${BASE_URL}/uploads/${row.proof_image}`} target="_blank" rel="noopener noreferrer">
-													<img src={`${BASE_URL}/uploads/${row.proof_image}`} alt="Bukti" style={{ maxWidth: 60, maxHeight: 60, borderRadius: 4, border: '1px solid #eee' }} />
-												</a>
-											) : '-'}
-										</TableCell>
-															<TableCell align="center">
-																<IconButton size="small" onClick={() => openDetail(row)} color="success">
-																	<Visibility />
-																</IconButton>
-																<IconButton size="small" onClick={() => openEdit(row)} color="primary">
-																	<Edit />
-																</IconButton>
-																<IconButton size="small" onClick={() => remove(row.id)} color="error">
-																	<Delete />
-																</IconButton>
-															</TableCell>
-									</TableRow>
-								))}
-							</TableBody>
-						</Table>
-					</CardContent>
-				</Card>
-			</Grid>
+		<Box sx={{ p: { xs: 2, md: 3 }, bgcolor: '#f8fafc', minHeight: '100vh' }}>
+			<PageHeader
+				title="Pemasukan"
+				description="Kelola dan pantau semua pemasukan koperasi"
+				actions={
+					<>
+						<ModernButton variant="outlined" startIcon={<Download />} onClick={doExport}>
+							Download
+						</ModernButton>
+						<ModernButton startIcon={<Add />} onClick={openCreate}>
+							Tambah
+						</ModernButton>
+					</>
+				}
+			/>
+
+			<ModernTable>
+				<TableHead>
+					<TableRow>
+						<ModernTableCell>Sumber</ModernTableCell>
+						<ModernTableCell>Jumlah</ModernTableCell>
+						<ModernTableCell>Tanggal</ModernTableCell>
+						<ModernTableCell>Keterangan</ModernTableCell>
+						<ModernTableCell>Bukti</ModernTableCell>
+						<ModernTableCell align="right">Aksi</ModernTableCell>
+					</TableRow>
+			</TableHead>
+			<TableBody>
+				{(data ?? []).map((row: any) => (
+					<ModernTableRow key={row.id}>
+						<ModernTableCell variant="name">{row.source}</ModernTableCell>
+						<ModernTableCell variant="amount">{formatRupiah(row.amount)}</ModernTableCell>
+						<ModernTableCell variant="date">{formatDate(row.date)}</ModernTableCell>
+						<ModernTableCell variant="description">{row.description}</ModernTableCell>
+						<ModernTableCell>
+							{row.proof_image ? (
+								<a href={`${BASE_URL}/uploads/${row.proof_image}`} target="_blank" rel="noopener noreferrer">
+									<img src={`${BASE_URL}/uploads/${row.proof_image}`} alt="Bukti" style={{
+										maxWidth: 60,
+										maxHeight: 60,
+										borderRadius: 8,
+										border: '1px solid #e5e7eb',
+										objectFit: 'cover'
+									}} />
+								</a>
+							) : (
+								<Box sx={{ color: '#9ca3af', fontSize: '0.875rem' }}>-</Box>
+							)}
+						</ModernTableCell>
+						<ModernTableCell align="right">
+							<Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
+								<ModernIconButton onClick={() => openDetail(row)} color="success">
+									<Visibility fontSize="small" />
+								</ModernIconButton>
+								<ModernIconButton onClick={() => openEdit(row)} color="primary">
+									<Edit fontSize="small" />
+								</ModernIconButton>
+								<ModernIconButton onClick={() => remove(row.id)} color="error">
+									<Delete fontSize="small" />
+								</ModernIconButton>
+							</Box>
+						</ModernTableCell>
+					</ModernTableRow>
+				))}
+			</TableBody>
+		</ModernTable>
 
 			<Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
 				<DialogTitle>{form.id ? 'Edit' : 'Tambah'} Pemasukan</DialogTitle>
@@ -168,6 +190,13 @@ export default function IncomesPage() {
 							onChange={(e) => setForm({ ...form, date: e.target.value })}
 						/>
 					)}
+					{form.id ? (
+						<Box sx={{ mb: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+							<Typography variant="body2" color="text.secondary">
+								Tanggal: {dayjs(form.date).format('DD/MM/YYYY')}
+							</Typography>
+						</Box>
+					) : null}
 					<TextField label="Keterangan" fullWidth margin="normal" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
 					<input type="file" ref={fileRef} accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} />
 					<Button variant="outlined" startIcon={<PhotoCamera />} onClick={() => fileRef.current?.click()} sx={{ mt: 2 }}>
@@ -223,6 +252,6 @@ export default function IncomesPage() {
 					<Button onClick={() => setDetail(null)}>Tutup</Button>
 				</DialogActions>
 			</Dialog>
-		</Grid>
+		</Box>
 	);
 }

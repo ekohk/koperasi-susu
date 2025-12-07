@@ -5,6 +5,10 @@ import axios from 'axios';
 import { useState } from 'react';
 import { downloadExcel } from '../../utils/format';
 import { useAuth } from '../../auth/AuthContext';
+import PageHeader from '../../components/PageHeader';
+import ModernTable, { ModernTableCell, ModernTableRow } from '../../components/ModernTable';
+import ModernButton, { ModernIconButton } from '../../components/ModernButton';
+import { showSuccess, showError, showDeleteConfirm } from '../../utils/sweetalert';
 
 export default function CollectorsPage() {
 	const queryClient = useQueryClient();
@@ -43,97 +47,81 @@ export default function CollectorsPage() {
 		try {
 			if (form.id) {
 				await axios.put(`/api/collectors/${form.id}`, form);
-				alert('Berhasil mengedit pengepul!');
+				showSuccess('Data pengepul berhasil diperbarui', 'Berhasil!');
 			} else {
 				await axios.post('/api/collectors', form);
-				alert('Berhasil menambahkan pengepul!');
+				showSuccess('Data pengepul berhasil ditambahkan', 'Berhasil!');
 			}
 			setOpen(false);
 			queryClient.invalidateQueries({ queryKey: ['collectors'] });
 		} catch (err: any) {
 			console.error('Save error:', err);
-			alert('Gagal menyimpan: ' + (err?.response?.data?.message || err?.message || 'Unknown error'));
+			showError('Gagal menyimpan data pengepul: ' + (err?.response?.data?.message || err?.message || 'Terjadi kesalahan'), 'Gagal Menyimpan');
 		}
 	};
 
 	const remove = async (id: number) => {
-		if (!confirm('Hapus pengepul ini?')) return;
+		const confirmed = await showDeleteConfirm('pengepul ini');
+		if (!confirmed) return;
 		try {
 			await axios.delete(`/api/collectors/${id}`);
-			alert('Berhasil menghapus pengepul!');
+			showSuccess('Data pengepul berhasil dihapus', 'Berhasil!');
 			queryClient.invalidateQueries({ queryKey: ['collectors'] });
 		} catch (err: any) {
 			console.error('Delete error:', err);
-			alert('Gagal menghapus: ' + (err?.response?.data?.message || err?.message || 'Unknown error'));
+			showError('Gagal menghapus data pengepul: ' + (err?.response?.data?.message || err?.message || 'Terjadi kesalahan'), 'Gagal Menghapus');
 		}
 	};
 
 	const handleDownloadCollector = () => {
 		if (!selectedCollector) return;
-		downloadExcel(`/api/collections/export/excel?collector_id=${selectedCollector.id}`, token);
+		downloadExcel(`/api/collections/export/excel?collector_id=${selectedCollector.id}`, token || undefined);
 	};
 
 	return (
-		<Grid container spacing={3}>
-			<Grid item xs={12}>
-				<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-					<Typography variant="h5" fontWeight={700}>Pengepul Susu</Typography>
-					<Button variant="contained" startIcon={<Add />} onClick={openCreate}>Tambah</Button>
-				</Box>
-			</Grid>
-			<Grid item xs={12}>
-				<Card>
-					<CardContent>
-						<Table>
-							<TableHead>
-								<TableRow>
-									<TableCell>Nama</TableCell>
-									<TableCell>Alamat</TableCell>
-									<TableCell>Telepon</TableCell>
-									<TableCell align="center">Aksi</TableCell>
-								</TableRow>
-							</TableHead>
-							<TableBody>
-								{(data ?? []).map((row: any) => (
-									<TableRow 
-										key={row.id} 
-										hover 
-										onClick={() => openDetail(row)}
-										sx={{ cursor: 'pointer' }}
-									>
-										<TableCell>{row.name}</TableCell>
-										<TableCell>{row.address}</TableCell>
-										<TableCell>{row.phone}</TableCell>
-										<TableCell align="center">
-											<IconButton 
-												size="small" 
-												onClick={(e) => { e.stopPropagation(); openDetail(row); }}
-												color="success"
-											>
-												<Visibility />
-											</IconButton>
-											<IconButton 
-												size="small" 
-												onClick={(e) => { e.stopPropagation(); openEdit(row); }}
-												color="primary"
-											>
-												<Edit />
-											</IconButton>
-											<IconButton 
-												size="small" 
-												onClick={(e) => { e.stopPropagation(); remove(row.id); }}
-												color="error"
-											>
-												<Delete />
-											</IconButton>
-										</TableCell>
-									</TableRow>
-								))}
-							</TableBody>
-						</Table>
-					</CardContent>
-				</Card>
-			</Grid>
+		<Box sx={{ p: { xs: 2, md: 3 }, bgcolor: '#f8fafc', minHeight: '100vh' }}>
+			<PageHeader
+				title="Pengepul Susu"
+				description="Kelola data pengepul susu koperasi"
+				actions={
+					<ModernButton startIcon={<Add />} onClick={openCreate}>
+						Tambah
+					</ModernButton>
+				}
+			/>
+
+			<ModernTable>
+				<TableHead>
+					<TableRow>
+						<ModernTableCell>Nama</ModernTableCell>
+						<ModernTableCell>Alamat</ModernTableCell>
+						<ModernTableCell>Telepon</ModernTableCell>
+						<ModernTableCell align="right">Aksi</ModernTableCell>
+					</TableRow>
+				</TableHead>
+				<TableBody>
+					{(data ?? []).map((row: any) => (
+						<ModernTableRow key={row.id}>
+							<ModernTableCell variant="name">{row.name}</ModernTableCell>
+							<ModernTableCell variant="description">{row.address}</ModernTableCell>
+							<ModernTableCell>{row.phone}</ModernTableCell>
+							<ModernTableCell align="right">
+								<Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
+									<ModernIconButton onClick={() => openDetail(row)} color="success">
+										<Visibility fontSize="small" />
+									</ModernIconButton>
+									<ModernIconButton onClick={() => openEdit(row)} color="primary">
+										<Edit fontSize="small" />
+									</ModernIconButton>
+									<ModernIconButton onClick={() => remove(row.id)} color="error">
+										<Delete fontSize="small" />
+									</ModernIconButton>
+								</Box>
+							</ModernTableCell>
+						</ModernTableRow>
+					))}
+			</TableBody>
+		</ModernTable>
 
 			<Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
 				<DialogTitle>{form.id ? 'Edit' : 'Tambah'} Pengepul</DialogTitle>
@@ -143,8 +131,8 @@ export default function CollectorsPage() {
 					<TextField label="Telepon" fullWidth margin="normal" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
 				</DialogContent>
 				<DialogActions>
-					<Button onClick={() => setOpen(false)}>Batal</Button>
-					<Button variant="contained" onClick={save}>Simpan</Button>
+					<ModernButton variant="outlined" onClick={() => setOpen(false)}>Batal</ModernButton>
+					<ModernButton onClick={save}>Simpan</ModernButton>
 				</DialogActions>
 			</Dialog>
 
@@ -200,9 +188,9 @@ export default function CollectorsPage() {
 												</Typography>
 											</Grid>
 											<Grid item xs={6} sm={3}>
-												<Typography variant="body2" color="text.secondary">Total Pendapatan</Typography>
+												<Typography variant="body2" color="text.secondary">Total Biaya</Typography>
 												<Typography variant="h6" color="success.main" fontWeight={700}>
-													Rp {collectorDetail.summary.total_income?.toLocaleString() ?? '0'}
+													Rp {new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(collectorDetail.summary.total_income || 0)}
 												</Typography>
 											</Grid>
 											<Grid item xs={6} sm={3}>
@@ -226,49 +214,49 @@ export default function CollectorsPage() {
 							<Card>
 								<CardContent>
 									<Typography variant="h6" gutterBottom>Laporan 10 Hari Terakhir</Typography>
-									<Table size="small">
+									<ModernTable>
 										<TableHead>
 											<TableRow>
-												<TableCell>Tanggal</TableCell>
-												<TableCell align="right">Pagi (L)</TableCell>
-												<TableCell align="right">Sore (L)</TableCell>
-												<TableCell align="right">Total (L)</TableCell>
-												<TableCell align="right">Harga/L</TableCell>
-												<TableCell align="right">Pendapatan</TableCell>
+												<ModernTableCell>Tanggal</ModernTableCell>
+												<ModernTableCell align="right">Pagi (L)</ModernTableCell>
+												<ModernTableCell align="right">Sore (L)</ModernTableCell>
+												<ModernTableCell align="right">Total (L)</ModernTableCell>
+												<ModernTableCell align="right">Harga/L</ModernTableCell>
+												<ModernTableCell align="right">Biaya</ModernTableCell>
 											</TableRow>
 										</TableHead>
 										<TableBody>
 											{Array.isArray(collectorDetail.collections) && collectorDetail.collections.length > 0 ? (
 												collectorDetail.collections.map((collection: any) => (
-													<TableRow key={collection.date}>
-														<TableCell>{new Date(collection.date).toLocaleDateString('id-ID')}</TableCell>
-														<TableCell align="right">{collection.morning_amount}</TableCell>
-														<TableCell align="right">{collection.afternoon_amount}</TableCell>
-														<TableCell align="right" fontWeight={600}>{collection.total_amount}</TableCell>
-														<TableCell align="right">Rp {collection.price_per_liter}</TableCell>
-														<TableCell align="right" fontWeight={600} color="success.main">
-															Rp {parseFloat(collection.total_income).toLocaleString()}
-														</TableCell>
-													</TableRow>
+													<ModernTableRow key={collection.date}>
+														<ModernTableCell variant="date">{new Date(collection.date).toLocaleDateString('id-ID')}</ModernTableCell>
+														<ModernTableCell align="right">{collection.morning_amount}</ModernTableCell>
+														<ModernTableCell align="right">{collection.afternoon_amount}</ModernTableCell>
+														<ModernTableCell align="right">{collection.total_amount}</ModernTableCell>
+														<ModernTableCell align="right" variant="amount">Rp {new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(collection.price_per_liter || 0)}</ModernTableCell>
+														<ModernTableCell align="right" variant="amount">
+															Rp {new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(parseFloat(collection.total_income) || 0)}
+														</ModernTableCell>
+													</ModernTableRow>
 												))
 											) : (
-												<TableRow>
-													<TableCell colSpan={6} align="center" sx={{ py: 3 }}>
-														<Typography color="text.secondary">
+												<ModernTableRow>
+													<ModernTableCell colSpan={6} align="center" sx={{ py: 3 }}>
+														<Box sx={{ color: '#9ca3af', fontSize: '0.875rem' }}>
 															Tidak ada data penjualan dalam 10 hari terakhir
-														</Typography>
-													</TableCell>
-												</TableRow>
+														</Box>
+													</ModernTableCell>
+												</ModernTableRow>
 											)}
 										</TableBody>
-									</Table>
+									</ModernTable>
 								</CardContent>
 							</Card>
 						</Box>
 					) : detailError ? (
 						<Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
 							<Typography color="error">
-								{detailError.response?.data?.message || detailError.message || 'Tidak dapat memuat data pengepul'}
+								{(detailError as any)?.response?.data?.message || detailError.message || 'Tidak dapat memuat data pengepul'}
 							</Typography>
 						</Box>
 					) : (
@@ -278,19 +266,17 @@ export default function CollectorsPage() {
 					)}
 				</DialogContent>
 				<DialogActions>
-					<Button onClick={() => setDetailOpen(false)}>Tutup</Button>
-					<Button
-						variant="contained"
+					<ModernButton variant="outlined" onClick={() => setDetailOpen(false)}>Tutup</ModernButton>
+					<ModernButton
 						startIcon={<Download />}
 						onClick={handleDownloadCollector}
-						color="primary"
 						disabled={!selectedCollector}
 					>
 						Download
-					</Button>
+					</ModernButton>
 				</DialogActions>
 			</Dialog>
-		</Grid>
+		</Box>
 	);
 }
 

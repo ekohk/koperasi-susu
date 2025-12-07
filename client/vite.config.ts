@@ -5,6 +5,7 @@ import { fileURLToPath, URL } from 'node:url';
 export default defineConfig({
 	plugins: [react()],
 	server: {
+		host: '0.0.0.0', // Membolehkan akses dari IP lain di jaringan
 		port: 5173,
 		proxy: {
 			'/api': {
@@ -12,6 +13,10 @@ export default defineConfig({
 				changeOrigin: true
 			}
 		}
+	},
+	preview: {
+		host: '0.0.0.0', // Untuk production preview
+		port: 5173
 	},
 	resolve: {
 		alias: {

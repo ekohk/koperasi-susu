@@ -1,7 +1,8 @@
 import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
-import { SnackbarProvider } from 'notistack';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import DashboardLayout from './layouts/DashboardLayout';
 import DashboardHome from './pages/dashboard/DashboardHome';
 import CollectorsPage from './pages/collectors/CollectorsPage';
@@ -16,6 +17,7 @@ import ShipmentsPage from './pages/shipments/ShipmentsPage';
 import MonthlyReportPage from './pages/reports/MonthlyReportPage';
 import { AuthProvider } from './auth/AuthContext';
 import ProtectedRoute from './auth/ProtectedRoute';
+import { NotificationProvider } from './components/Notification';
 
 const theme = createTheme({
 	palette: {
@@ -32,10 +34,15 @@ export default function App() {
 	return (
 		<ThemeProvider theme={theme}>
 			<CssBaseline />
-			<SnackbarProvider maxSnack={3} autoHideDuration={2500}>
+			<NotificationProvider>
 				<AuthProvider>
 					<Routes>
+						{/* Public Auth Routes */}
 						<Route path="/login" element={<LoginPage />} />
+						<Route path="/register" element={<RegisterPage />} />
+						<Route path="/forgot-password" element={<ForgotPasswordPage />} />
+
+						{/* Protected Routes */}
 						<Route
 							path="/"
 							element={
@@ -58,7 +65,7 @@ export default function App() {
 						</Route>
 					</Routes>
 				</AuthProvider>
-			</SnackbarProvider>
+			</NotificationProvider>
 		</ThemeProvider>
 	);
 }

@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)",
+      "Bash(node:*)",
+      "Bash(npm start)",
+      "Bash(npm run dev:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(timeout 3 bash -c \"curl -s http://localhost:5000/api/auth/register -X POST -H ''Content-Type: application/json'' -d ''{\"\"username\"\":\"\"testuser\"\",\"\"password\"\":\"\"test123\"\",\"\"fullname\"\":\"\"Test User\"\"}'' || echo ''Server not responding''\")",
+      "Bash(curl -s http://localhost:5000/api/auth/login -X POST -H 'Content-Type: application/json' -d '{\"\"username\"\":\"\"testuser\"\",\"\"password\"\":\"\"test123\"\"}')",
+      "Bash(curl -s http://localhost:5000/api/auth/register -X POST -H 'Content-Type: application/json' -d '{\"\"username\"\":\"\"ab\"\",\"\"password\"\":\"\"test123\"\",\"\"fullname\"\":\"\"Test\"\"}')",
+      "Bash(timeout:*)",
+      "Bash(start /B npm start)",
+      "Bash(curl -s http://localhost:5000/api/auth/register -X POST -H 'Content-Type: application/json' -d '{\"\"username\"\":\"\"xy\"\",\"\"password\"\":\"\"test123\"\",\"\"fullname\"\":\"\"Test\"\"}')",
+      "Bash(curl -s http://localhost:5000/api/auth/register -X POST -H 'Content-Type: application/json' -d \"{\"\"username\"\":\"\"test@user\"\",\"\"password\"\":\"\"test123\"\",\"\"fullname\"\":\"\"Test User\"\"}\")",
+      "Bash(curl -s http://localhost:5000/api/auth/register -X POST -H 'Content-Type: application/json' -d '{\"\"username\"\":\"\"client_demo\"\",\"\"password\"\":\"\"client123\"\",\"\"fullname\"\":\"\"Client Demo User\"\"}')",
+      "Bash(curl -s http://localhost:5000/api/auth/login -X POST -H 'Content-Type: application/json' -d '{\"\"\"\"username\"\"\"\":\"\"\"\"client_demo\"\"\"\",\"\"\"\"password\"\"\"\":\"\"\"\"client123\"\"\"\"}')",
+      "Bash(tasklist)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

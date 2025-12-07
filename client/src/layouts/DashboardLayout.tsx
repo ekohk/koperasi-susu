@@ -1,24 +1,20 @@
-import { Logout, Savings, People, AccessTime, Inventory2, Build, Payments, Dashboard, Assessment, LocalShipping } from '@mui/icons-material';
+import { Logout, Savings, People, AccessTime, Inventory2, Build, Payments, Assessment, LocalShipping, Dashboard } from '@mui/icons-material';
 import {
-	AppBar,
 	Box,
 	Divider,
 	Drawer,
-	IconButton,
 	List,
 	ListItemButton,
 	ListItemIcon,
 	ListItemText,
-	Toolbar,
 	Typography,
 	useMediaQuery
 } from '@mui/material';
-import MenuIcon from '@mui/icons-material/Menu';
 import { useMemo, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 
-const drawerWidth = 260;
+const drawerWidth = 280;
 
 const navItems = [
 	{ to: '/', label: 'Dashboard', icon: <Dashboard /> },
@@ -36,66 +32,180 @@ const navItems = [
 export default function DashboardLayout() {
 	const [open, setOpen] = useState(false);
 	const isDesktop = useMediaQuery('(min-width:1200px)');
-	const { user, logout } = useAuth();
+	const { logout } = useAuth();
 	const location = useLocation();
 
 	const activePath = useMemo(() => location.pathname, [location.pathname]);
 
 	const drawer = (
-		<Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-			<Toolbar>
-				<Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-					<img src="/logo.png" alt="Logo" style={{ width: 64, height: 64, objectFit: 'contain' }} />
-					<Typography variant="h6" noWrap component="div" sx={{ fontWeight: 700 }}>
-						Banyu Makmur
-					</Typography>
+		<Box sx={{ display: 'flex', flexDirection: 'column', bgcolor: '#ffffff', height: '100%' }}>
+			{/* Modern Header with Brand */}
+			<Box sx={{ p: 3, borderBottom: '1px solid #e5e7eb', flexShrink: 0 }}>
+				<Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+					<Box sx={{
+						width: 48,
+						height: 48,
+						mr: 2,
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center'
+					}}>
+						<img src="/logo.png" alt="Logo" style={{ width: 48, height: 48, objectFit: 'contain' }} />
+					</Box>
+					<Box>
+						<Typography variant="h6" sx={{ fontWeight: 700, color: '#1f2937', lineHeight: 1.2 }}>
+							Koperasi Susu
+						</Typography>
+						<Typography variant="caption" sx={{ color: '#6b7280', fontWeight: 500 }}>
+							Banyu Makmur
+						</Typography>
+					</Box>
 				</Box>
-			</Toolbar>
-			<Divider />
-			<Box sx={{ flexGrow: 1 }}>
-				<List>
-					{navItems.map((item) => (
-						<ListItemButton
-							key={item.to}
-							component={Link}
-							to={item.to}
-							selected={activePath === item.to || (item.to !== '/' && activePath.startsWith(item.to))}
-						>
-							<ListItemIcon>{item.icon}</ListItemIcon>
-							<ListItemText primary={item.label} />
-						</ListItemButton>
-					))}
+			</Box>
+
+			{/* Navigation Menu - Scrollable */}
+			<Box sx={{ flexGrow: 1, px: 2, py: 1, pb: { xl: 10, xs: 2 }, overflowY: 'auto', overflowX: 'hidden' }}>
+				<Typography variant="caption" sx={{
+					px: 2,
+					py: 1,
+					color: '#9ca3af',
+					fontWeight: 600,
+					fontSize: '0.75rem',
+					textTransform: 'uppercase',
+					letterSpacing: '0.05em'
+				}}>
+					Menu Utama
+				</Typography>
+				<List sx={{ pt: 1 }}>
+					{navItems.map((item) => {
+						const isActive = activePath === item.to || (item.to !== '/' && activePath.startsWith(item.to));
+						return (
+							<ListItemButton
+								key={item.to}
+								component={Link}
+								to={item.to}
+								sx={{
+									borderRadius: 2,
+									mb: 0.5,
+									mx: 1,
+									transition: 'all 0.2s ease-in-out',
+									...(isActive ? {
+										bgcolor: '#dcfce7',
+										color: '#22c55e',
+										'&:hover': {
+											bgcolor: '#bbf7d0'
+										},
+										'& .MuiListItemIcon-root': {
+											color: '#22c55e'
+										}
+									} : {
+										color: '#6b7280',
+										'&:hover': {
+											bgcolor: '#f8fafc',
+											color: '#1f2937'
+										},
+										'& .MuiListItemIcon-root': {
+											color: '#9ca3af'
+										}
+									})
+								}}
+							>
+								<ListItemIcon sx={{
+									minWidth: 40,
+									transition: 'color 0.2s ease-in-out'
+								}}>
+									{item.icon}
+								</ListItemIcon>
+								<ListItemText
+									primary={item.label}
+									primaryTypographyProps={{
+										fontWeight: isActive ? 600 : 500,
+										fontSize: '0.875rem'
+									}}
+								/>
+							</ListItemButton>
+						);
+					})}
 				</List>
 			</Box>
-			<Divider />
-			<List>
-				<ListItemButton onClick={logout}>
-					<ListItemIcon>
+
+			{/* Logout Section: fixed di bawah sidebar pada desktop, normal di mobile */}
+			<Divider sx={{ my: 2, display: { xs: 'none', xl: 'block' } }} />
+			<Box
+				sx={{
+					position: { xl: 'fixed', xs: 'static' },
+					left: 0,
+					bottom: 0,
+					width: { xl: drawerWidth, xs: '100%' },
+					zIndex: 1201,
+					bgcolor: '#fff',
+					borderTop: '1px solid #e5e7eb',
+					p: 2,
+					boxShadow: { xl: '0 -2px 8px rgba(0,0,0,0.03)', xs: 'none' },
+					display: { xl: 'block', xs: 'none' }
+				}}
+			>
+				<ListItemButton
+					onClick={logout}
+					sx={{
+						borderRadius: 2,
+						color: '#ef4444',
+						p: 2,
+						'&:hover': {
+							bgcolor: '#fef2f2'
+						}
+					}}
+				>
+					<ListItemIcon sx={{ color: '#ef4444', minWidth: 40 }}>
 						<Logout />
 					</ListItemIcon>
-					<ListItemText primary="Logout" />
+					<ListItemText
+						primary="Keluar"
+						primaryTypographyProps={{
+							fontWeight: 500,
+							fontSize: '0.875rem'
+						}}
+					/>
 				</ListItemButton>
-			</List>
+			</Box>
+			{/* Logout Section untuk mobile/tablet */}
+			<Box sx={{ display: { xs: 'block', xl: 'none' }, mt: 2 }}>
+				<Divider sx={{ my: 2 }} />
+				<ListItemButton
+					onClick={logout}
+					sx={{
+						borderRadius: 2,
+						color: '#ef4444',
+						p: 2,
+						'&:hover': {
+							bgcolor: '#fef2f2'
+						}
+					}}
+				>
+					<ListItemIcon sx={{ color: '#ef4444', minWidth: 40 }}>
+						<Logout />
+					</ListItemIcon>
+					<ListItemText
+						primary="Keluar"
+						primaryTypographyProps={{
+							fontWeight: 500,
+							fontSize: '0.875rem'
+						}}
+					/>
+				</ListItemButton>
+			</Box>
 		</Box>
 	);
 
 	return (
-		<Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#f7f9fc' }}>
-			<AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }} color="inherit" elevation={1}>
-				<Toolbar sx={{ minHeight: { xs: 72, sm: 76 } }}>
-					<IconButton color="inherit" edge="start" onClick={() => setOpen(true)} sx={{ mr: 2, display: { xl: 'none' } }}>
-						<MenuIcon />
-					</IconButton>
-					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexGrow: 1 }}>
-						<img src="/logo.png" alt="Logo" style={{ width: 56, height: 56, objectFit: 'contain' }} />
-						<Typography variant="h6" sx={{ fontWeight: 700 }}>
-							Banyu Makmur
-						</Typography>
-					</Box>
-					<Typography variant="body1" sx={{ color: 'text.secondary' }}>{user?.fullname}</Typography>
-				</Toolbar>
-			</AppBar>
-
+		<Box sx={{
+			display: 'flex',
+			minHeight: '100vh',
+			bgcolor: '#f8fafc',
+			margin: 0,
+			padding: 0,
+			position: 'relative'
+		}}>
 			<Drawer
 				variant={isDesktop ? 'permanent' : 'temporary'}
 				open={isDesktop ? true : open}
@@ -103,14 +213,29 @@ export default function DashboardLayout() {
 				ModalProps={{ keepMounted: true }}
 				sx={{
 					width: drawerWidth,
-					'& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' }
+					'& .MuiDrawer-paper': {
+						width: drawerWidth,
+						boxSizing: 'border-box',
+						borderRight: '1px solid #e5e7eb',
+						boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+						overflowY: 'auto',
+						overflowX: 'hidden',
+						height: '100vh'
+					}
 				}}
 			>
 				{drawer}
 			</Drawer>
 
-			<Box component="main" sx={{ flexGrow: 1, p: 3, width: { xl: `calc(100% - ${drawerWidth}px)` } }}>
-				<Toolbar />
+			<Box
+				component="main"
+				sx={{
+					flexGrow: 1,
+					width: { xl: `calc(100% - ${drawerWidth}px)` },
+					minHeight: '100vh',
+					bgcolor: '#f8fafc'
+				}}
+			>
 				<Outlet />
 			</Box>
 		</Box>

@@ -413,14 +413,14 @@ router.delete('/bulk/delete-by-month', async (req, res) => {
 router.get('/stats/available-months', async (req, res) => {
   try {
     const [months] = await db.promise().query(
-      `SELECT 
+      `SELECT
         YEAR(date) as year,
         MONTH(date) as month,
         COUNT(*) as record_count,
-        SUM(morning_amount + afternoon_amount) as total_liters,
-        SUM((morning_amount + afternoon_amount) * price_per_liter) as total_income
-       FROM milk_collections 
-       GROUP BY YEAR(date), MONTH(date) 
+        ROUND(SUM(morning_amount + afternoon_amount), 2) as total_liters,
+        ROUND(SUM((morning_amount + afternoon_amount) * price_per_liter), 0) as total_income
+       FROM milk_collections
+       GROUP BY YEAR(date), MONTH(date)
        ORDER BY year DESC, month DESC`
     );
 
